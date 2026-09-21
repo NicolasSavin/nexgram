@@ -4,6 +4,8 @@
         <item name="android:statusBarColor">#17212B</item>
         <item name="android:navigationBarColor">#17212B</item>
         <item name="android:windowBackground">#0E1621</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
         <item name="colorPrimary">#2AABEE</item>
     </style>
 </resources>
