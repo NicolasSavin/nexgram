@@ -3,7 +3,9 @@ package ru.nexgram.app
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
 import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
@@ -18,6 +20,9 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
+import org.json.JSONObject
+import java.net.URL
+import kotlin.concurrent.thread
 
 class MainActivity : AppCompatActivity() {
     private lateinit var web: WebView
@@ -80,6 +85,34 @@ class MainActivity : AppCompatActivity() {
         }
 
         web.loadUrl("https://appassets.androidplatform.net/assets/www/index.html")
+        checkUpdate()
+    }
+
+    private fun checkUpdate() {
+        val current = try {
+            packageManager.getPackageInfo(packageName, 0).versionCode
+        } catch (_: Exception) { 3 }
+        thread {
+            try {
+                val raw = URL("https://nicolassavin.github.io/nexgram/version.json").readText()
+                val j = JSONObject(raw)
+                val remote = j.optInt("versionCode", 0)
+                val name = j.optString("versionName", "")
+                val apk = j.optString("apk", "https://github.com/NicolasSavin/nexgram/actions")
+                if (remote > current) {
+                    runOnUiThread {
+                        AlertDialog.Builder(this)
+                            .setTitle("Радар")
+                            .setMessage("Доступна версия $name. Скачать обновление?")
+                            .setPositiveButton("Обновить") { _, _ ->
+                                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(apk)))
+                            }
+                            .setNegativeButton("Позже", null)
+                            .show()
+                    }
+                }
+            } catch (_: Exception) { }
+        }
     }
 
     override fun onRequestPermissionsResult(code: Int, perms: Array<out String>, res: IntArray) {
@@ -94,7 +127,7 @@ class MainActivity : AppCompatActivity() {
     private fun prefs() = getSharedPreferences("nexgram", Context.MODE_PRIVATE)
 
     private fun injectRelay() {
-        val relay = prefs().getString("relay", "") ?: ""
+        val relay = prefs().getString("relay", "https://karavanmessage.ru") ?: "https://karavanmessage.ru"
         val js = "window.NEXGRAM_RELAY = ${org.json.JSONObject.quote(relay)};"
         web.evaluateJavascript(js, null)
     }
@@ -102,10 +135,10 @@ class MainActivity : AppCompatActivity() {
     private fun askRelay() {
         val input = EditText(this)
         input.hint = getString(R.string.server_hint)
-        input.setText(prefs().getString("relay", "") ?: "")
+        input.setText(prefs().getString("relay", "https://karavanmessage.ru") ?: "")
         AlertDialog.Builder(this)
             .setTitle(R.string.menu_server)
-            .setMessage("Долгое нажатие — адрес реле. Рация работает после входа в комнату NGP.")
+            .setMessage("Долгое нажатие — адрес реле Радара.")
             .setView(input)
             .setPositiveButton(R.string.save) { _, _ ->
                 prefs().edit().putString("relay", input.text.toString().trim()).apply()
