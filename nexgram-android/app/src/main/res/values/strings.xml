@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Караван</string>
+    <string name="app_name">Радар</string>
     <string name="menu_server">Адрес реле NGP</string>
     <string name="server_hint">https://karavanmessage.ru</string>
     <string name="save">Сохранить</string>
