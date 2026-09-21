@@ -2,7 +2,6 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
-
 android {
     namespace = "ru.nexgram.app"
     compileSdk = 35
@@ -10,8 +9,8 @@ android {
         applicationId = "ru.nexgram.app"
         minSdk = 24
         targetSdk = 35
-        versionCode = 4
-        versionName = "0.5.0-radar"
+        versionCode = 5
+        versionName = "0.6.0-radar"
     }
     buildTypes {
         release {
@@ -25,7 +24,6 @@ android {
     }
     kotlinOptions { jvmTarget = "17" }
 }
-
 dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.appcompat:appcompat:1.7.0")
