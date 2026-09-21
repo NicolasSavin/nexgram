@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.NexGram" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="android:statusBarColor">#17212B</item>
+        <item name="android:navigationBarColor">#17212B</item>
+        <item name="android:windowBackground">#0E1621</item>
+        <item name="colorPrimary">#2AABEE</item>
+    </style>
+</resources>
