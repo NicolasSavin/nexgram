@@ -1,5 +1,5 @@
-# NexGram
+# Караван
 
-Веб-прототип мессенджера в духе Telegram.
+Свой мессенджер: чаты, рация, маршруты.
 
-Откройте `index.html` в браузере.
+Сайт: https://nicolassavin.github.io/nexgram/
