@@ -69,7 +69,6 @@
       }
       relays.push("http://186.246.3.44");
       if (window.NEXGRAM_RELAY) relays.push(window.NEXGRAM_RELAY.replace(/\/$/, ""));
-      relays.push("https://karavanmessage.ru");
       var lastErr = null;
       for (var i = 0; i < relays.length; i++) {
         window.NEXGRAM_RELAY = relays[i];

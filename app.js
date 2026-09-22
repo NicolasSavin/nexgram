@@ -566,6 +566,93 @@ function radarSocket(wsUrl) {
   return new WebSocket(wsUrl);
 }
 
+function radarHttp(method, url, body) {
+  return new Promise(function (resolve, reject) {
+    if (window.RadarNative && typeof RadarNative.httpReq === "function") {
+      window.__radarHttpWait = window.__radarHttpWait || {};
+      var id = "h" + Date.now() + Math.random().toString(16).slice(2);
+      window.__radarHttpWait[id] = { resolve: resolve, reject: reject };
+      window.__radarHttpCb = function (hid, text) {
+        var w = window.__radarHttpWait && window.__radarHttpWait[hid];
+        if (!w) return;
+        delete window.__radarHttpWait[hid];
+        if (String(text).indexOf("ERR:") === 0) w.reject(new Error(text.slice(4)));
+        else w.resolve(text);
+      };
+      RadarNative.httpReq(id, method, url, body || "");
+      return;
+    }
+    var opts = { method: method, headers: { "Content-Type": "application/json" } };
+    if (method === "POST") opts.body = body || "{}";
+    fetch(url, opts).then(function (r) { return r.text(); }).then(resolve).catch(reject);
+  });
+}
+
+function httpSocket(base) {
+  base = String(base || "http://186.246.3.44").replace(/\/$/, "").replace(/\/ws$/, "");
+  var sid = "";
+  var stopped = false;
+  var fake = {
+    readyState: 0,
+    send: function (s) { post(s); },
+    close: function () { stopped = true; fake.readyState = 3; },
+    _onopen: null,
+    _onmessage: null,
+    _onerror: null,
+    _onclose: null
+  };
+  Object.defineProperty(fake, "onopen", {
+    set: function (fn) { fake._onopen = fn; if (fake.readyState === 1 && fn) fn(); },
+    get: function () { return fake._onopen; }
+  });
+  Object.defineProperty(fake, "onmessage", {
+    set: function (fn) { fake._onmessage = fn; },
+    get: function () { return fake._onmessage; }
+  });
+  Object.defineProperty(fake, "onerror", {
+    set: function (fn) { fake._onerror = fn; },
+    get: function () { return fake._onerror; }
+  });
+  function emitOut(out) {
+    (out || []).forEach(function (m) {
+      if (fake._onmessage) fake._onmessage({ data: typeof m === "string" ? m : JSON.stringify(m) });
+    });
+  }
+  function post(s) {
+    var frame;
+    try { frame = JSON.parse(s); } catch (e) { frame = s; }
+    radarHttp("POST", base + "/ngp", JSON.stringify({ sid: sid, frame: frame })).then(function (text) {
+      var j = {};
+      try { j = JSON.parse(text); } catch (e) {}
+      if (j.sid) sid = j.sid;
+      emitOut(j.out);
+    }).catch(function (e) {
+      if (fake._onerror) fake._onerror(e);
+    });
+  }
+  function poll() {
+    if (stopped) return;
+    if (!sid) {
+      setTimeout(poll, 300);
+      return;
+    }
+    radarHttp("GET", base + "/ngp?sid=" + encodeURIComponent(sid), "").then(function (text) {
+      var j = {};
+      try { j = JSON.parse(text); } catch (e) {}
+      emitOut(j.out);
+      if (!stopped) poll();
+    }).catch(function () {
+      if (!stopped) setTimeout(poll, 1200);
+    });
+  }
+  setTimeout(function () {
+    fake.readyState = 1;
+    if (fake._onopen) fake._onopen();
+    poll();
+  }, 0);
+  return fake;
+}
+
 const live = { ws: null, roomId: null, nick: null, enabled: false };
 
 function isLiveId(id) {
@@ -620,7 +707,38 @@ async function startLive(nick, roomId, pass) {
   } else {
     throw new Error("Нет адреса реле");
   }
-  const ws = radarSocket(wsUrl);
+  const httpBase = (relay || "http://186.246.3.44").replace(/\/ws\/?$/, "");
+  let ws;
+  const useHttp = window.RadarNative && typeof RadarNative.httpReq === "function";
+  if (useHttp) {
+    chat.status = "канал HTTP…";
+    if (typeof renderList === "function") renderList();
+    ws = httpSocket(httpBase);
+    await new Promise(function (resolve, reject) {
+      const t = setTimeout(function () { reject(new Error("http timeout")); }, 8000);
+      ws.onopen = function () { clearTimeout(t); resolve(); };
+    });
+  } else {
+    try {
+      ws = radarSocket(wsUrl);
+      await new Promise(function (resolve, reject) {
+        const t = setTimeout(function () {
+          try { ws.close(); } catch (e) {}
+          reject(new Error("ws timeout"));
+        }, 4000);
+        ws.onopen = function () { clearTimeout(t); resolve(); };
+        ws.onerror = function () { clearTimeout(t); reject(new Error("ws error")); };
+      });
+    } catch (e) {
+      chat.status = "канал HTTP…";
+      if (typeof renderList === "function") renderList();
+      ws = httpSocket(httpBase);
+      await new Promise(function (resolve, reject) {
+        const t = setTimeout(function () { reject(new Error("http timeout")); }, 8000);
+        ws.onopen = function () { clearTimeout(t); resolve(); };
+      });
+    }
+  }
   live.ws = ws;
   const joined = new Promise((resolve, reject) => {
     const t = setTimeout(() => {
@@ -631,7 +749,7 @@ async function startLive(nick, roomId, pass) {
     live._relayFail = function (e) { clearTimeout(t); reject(e || new Error("relay")); };
     ws.onerror = () => live._relayFail(new Error("ws error"));
   });
-  ws.onopen = () => ws.send(JSON.stringify(NGP.frame("HELLO", { client: "nexgram-web/0.3", features: ["aes-gcm", "history"] })));
+  ws.send(JSON.stringify(NGP.frame("HELLO", { client: "nexgram-web/0.3", features: ["aes-gcm", "history"] })));
   ws.onmessage = async (ev) => {
     const msg = NGP.parse(ev.data);
     if (!msg) return;

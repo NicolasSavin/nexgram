@@ -90,8 +90,93 @@ function broadcast(roomId, t, body, except) {
   }
 }
 
+const httpSessions = new Map();
+function makeHttpPeer() {
+  const sid = crypto.randomBytes(8).toString("hex");
+  const peer = {
+    sid,
+    hello: false,
+    roomId: null,
+    nick: "Гость-" + crypto.randomBytes(2).toString("hex"),
+    readyState: 1,
+    q: [],
+    wait: null,
+    send: function (raw) {
+      this.q.push(typeof raw === "string" ? raw : String(raw));
+      if (this.wait) {
+        const fn = this.wait;
+        this.wait = null;
+        fn();
+      }
+    },
+    close: function () { this.readyState = 3; }
+  };
+  httpSessions.set(sid, peer);
+  return peer;
+}
+
 const server = http.createServer((req, res) => {
   const urlPath = decodeURIComponent((req.url || "/").split("?")[0]);
+  const cors = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "GET,POST,OPTIONS"
+  };
+  if (req.method === "OPTIONS") {
+    res.writeHead(204, cors);
+    res.end();
+    return;
+  }
+  if (urlPath === "/ngp") {
+    if (req.method === "POST") {
+      let buf = "";
+      req.on("data", (c) => { buf += c; if (buf.length > MAX_AUDIO) req.destroy(); });
+      req.on("end", () => {
+        let body = {};
+        try { body = JSON.parse(buf || "{}"); } catch (e) { body = {}; }
+        let sess = body.sid && httpSessions.get(String(body.sid));
+        if (!sess) sess = makeHttpPeer();
+        const frameObj = body.frame || body;
+        try {
+          handleMessage(sess, typeof frameObj === "string" ? frameObj : JSON.stringify(frameObj));
+        } catch (e) {}
+        res.writeHead(200, Object.assign({ "Content-Type": "application/json" }, cors));
+        res.end(JSON.stringify({ sid: sess.sid, out: sess.q.splice(0, 80) }));
+      });
+      return;
+    }
+    if (req.method === "GET") {
+      const q = (req.url || "").split("?")[1] || "";
+      const sid = decodeURIComponent((q.match(/(?:^|&)sid=([^&]+)/) || [])[1] || "");
+      const sess = httpSessions.get(sid);
+      if (!sess) {
+        res.writeHead(400, Object.assign({ "Content-Type": "application/json" }, cors));
+        res.end(JSON.stringify({ error: "no sid" }));
+        return;
+      }
+      const flush = () => {
+        res.writeHead(200, Object.assign({ "Content-Type": "application/json" }, cors));
+        res.end(JSON.stringify({ sid: sess.sid, out: sess.q.splice(0, 80) }));
+      };
+      if (sess.q.length) {
+        flush();
+        return;
+      }
+      const t = setTimeout(() => {
+        sess.wait = null;
+        flush();
+      }, 15000);
+      sess.wait = () => {
+        clearTimeout(t);
+        sess.wait = null;
+        flush();
+      };
+      return;
+    }
+    res.writeHead(405, cors);
+    res.end();
+    return;
+  }
   let file = urlPath === "/" ? "/index.html" : urlPath;
   file = path.normalize(file).replace(/^(\.\.[/\\])+/, "");
   const abs = path.join(ROOT, file);
@@ -111,14 +196,7 @@ const server = http.createServer((req, res) => {
   });
 });
 
-const wss = new WebSocketServer({ server, path: "/ws" });
-
-wss.on("connection", (ws) => {
-  ws.hello = false;
-  ws.roomId = null;
-  ws.nick = "Гость-" + crypto.randomBytes(2).toString("hex");
-
-  ws.on("message", (raw) => {
+function handleMessage(ws, raw) {
     const parsed = parse(raw);
     if (parsed.err) {
       error(ws, parsed.err);
@@ -304,7 +382,15 @@ wss.on("connection", (ws) => {
     }
 
     error(ws, "UNKNOWN_TYPE", msg.id);
-  });
+}
+
+const wss = new WebSocketServer({ server, path: "/ws" });
+
+wss.on("connection", (ws) => {
+  ws.hello = false;
+  ws.roomId = null;
+  ws.nick = "Гость-" + crypto.randomBytes(2).toString("hex");
+  ws.on("message", (raw) => handleMessage(ws, raw));
 
   ws.on("close", () => {
     if (ws.roomId && floors.get(ws.roomId) === ws) {

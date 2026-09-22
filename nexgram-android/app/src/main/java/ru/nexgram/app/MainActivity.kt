@@ -32,6 +32,8 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
@@ -42,6 +44,10 @@ class MainActivity : AppCompatActivity() {
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
     private var nativeWs: WebSocket? = null
     private val okHttp = OkHttpClient.Builder().readTimeout(0, TimeUnit.MILLISECONDS).build()
+    private val httpClient = OkHttpClient.Builder()
+        .readTimeout(25, TimeUnit.SECONDS)
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .build()
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -228,6 +234,25 @@ class MainActivity : AppCompatActivity() {
         fun wsSend(data: String) { nativeWs?.send(data) }
         @JavascriptInterface
         fun wsClose() { nativeWs?.close(1000, "bye"); nativeWs = null }
+        @JavascriptInterface
+        fun httpReq(id: String, method: String, url: String, body: String) {
+            thread {
+                try {
+                    val b = Request.Builder().url(url)
+                    if (method.equals("POST", ignoreCase = true)) {
+                        b.post((body ?: "").toRequestBody("application/json; charset=utf-8".toMediaType()))
+                    }
+                    httpClient.newCall(b.build()).execute().use { resp ->
+                        val text = resp.body?.string() ?: ""
+                        val js = "window.__radarHttpCb&&window.__radarHttpCb(${JSONObject.quote(id)},${JSONObject.quote(text)})"
+                        runOnUiThread { web.evaluateJavascript(js, null) }
+                    }
+                } catch (e: Exception) {
+                    val js = "window.__radarHttpCb&&window.__radarHttpCb(${JSONObject.quote(id)},${JSONObject.quote("ERR:" + (e.message ?: "fail"))})"
+                    runOnUiThread { web.evaluateJavascript(js, null) }
+                }
+            }
+        }
     }
 
     private fun ensureMsgChannel() {
