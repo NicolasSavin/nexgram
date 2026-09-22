@@ -19,7 +19,8 @@ const MIME = {
   ".css": "text/css; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
   ".md": "text/markdown; charset=utf-8",
-  ".json": "application/json"
+  ".json": "application/json",
+  ".apk": "application/vnd.android.package-archive"
 };
 
 const rooms = new Map();
@@ -157,8 +158,11 @@ wss.on("connection", (ws) => {
         return;
       }
       if (commits.has(room) && commits.get(room) !== commit) {
-        error(ws, "BAD_COMMIT", msg.id);
-        return;
+        const busy = rooms.get(room) && rooms.get(room).size > 0;
+        if (busy) {
+          error(ws, "BAD_COMMIT", msg.id);
+          return;
+        }
       }
       if (!commits.has(room)) commits.set(room, commit);
       if (ws.roomId && rooms.has(ws.roomId)) rooms.get(ws.roomId).delete(ws);

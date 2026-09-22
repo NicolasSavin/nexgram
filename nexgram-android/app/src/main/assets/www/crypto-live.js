@@ -6,16 +6,18 @@ const LiveCrypto = {
     const enc = new TextEncoder();
     const salt = enc.encode("NGP1-aes:" + roomId);
     if (globalThis.crypto && crypto.subtle) {
-      const base = await crypto.subtle.importKey("raw", enc.encode(passphrase), "PBKDF2", false, ["deriveKey"]);
-      this.key = await crypto.subtle.deriveKey(
-        { name: "PBKDF2", salt: salt, iterations: 120000, hash: "SHA-256" },
-        base,
-        { name: "AES-GCM", length: 256 },
-        false,
-        ["encrypt", "decrypt"]
-      );
-      this.mode = "subtle";
-      return;
+      try {
+        const base = await crypto.subtle.importKey("raw", enc.encode(passphrase), "PBKDF2", false, ["deriveKey"]);
+        this.key = await crypto.subtle.deriveKey(
+          { name: "PBKDF2", salt: salt, iterations: 120000, hash: "SHA-256" },
+          base,
+          { name: "AES-GCM", length: 256 },
+          false,
+          ["encrypt", "decrypt"]
+        );
+        this.mode = "subtle";
+        return;
+      } catch (e) { /* WebView sometimes breaks PBKDF2 — forge below */ }
     }
     if (typeof forge === "undefined") throw new Error("no crypto");
     let saltStr = "";

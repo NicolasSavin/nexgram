@@ -28,12 +28,19 @@ import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
 import org.json.JSONObject
 import java.net.URL
-import kotlin.concurrent.thread
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.WebSocket
+import okhttp3.WebSocketListener
+import okhttp3.Response
+import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity() {
     private lateinit var web: WebView
     private var pendingMic: PermissionRequest? = null
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
+    private var nativeWs: WebSocket? = null
+    private val okHttp = OkHttpClient.Builder().readTimeout(0, TimeUnit.MILLISECONDS).build()
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -193,6 +200,31 @@ class MainActivity : AppCompatActivity() {
                 } else stopService(i)
             }
         }
+        @JavascriptInterface
+        fun wsOpen(url: String) {
+            nativeWs?.cancel()
+            val req = Request.Builder().url(url).build()
+            nativeWs = okHttp.newWebSocket(req, object : WebSocketListener() {
+                override fun onOpen(webSocket: WebSocket, response: Response) {
+                    runOnUiThread { web.evaluateJavascript("window.__radarWsOnOpen&&window.__radarWsOnOpen()", null) }
+                }
+                override fun onMessage(webSocket: WebSocket, text: String) {
+                    val q = JSONObject.quote(text)
+                    runOnUiThread { web.evaluateJavascript("window.__radarWsOnMessage&&window.__radarWsOnMessage($q)", null) }
+                }
+                override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                    runOnUiThread { web.evaluateJavascript("window.__radarWsOnClose&&window.__radarWsOnClose()", null) }
+                }
+                override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                    val q = JSONObject.quote(t.message ?: "fail")
+                    runOnUiThread { web.evaluateJavascript("window.__radarWsOnError&&window.__radarWsOnError($q)", null) }
+                }
+            })
+        }
+        @JavascriptInterface
+        fun wsSend(data: String) { nativeWs?.send(data) }
+        @JavascriptInterface
+        fun wsClose() { nativeWs?.close(1000, "bye"); nativeWs = null }
     }
 
     private fun ensureMsgChannel() {

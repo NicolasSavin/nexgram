@@ -76,7 +76,11 @@
         try {
           await origStart(nick, roomId, pass);
           return;
-        } catch (e) { lastErr = e; }
+        } catch (e) {
+          lastErr = e;
+          var m = String((e && e.message) || e);
+          if (m.indexOf("парол") >= 0 || m.indexOf("BAD_COMMIT") >= 0) break;
+        }
       }
       if (typeof ensureLiveChat === "function") {
         var c = ensureLiveChat();

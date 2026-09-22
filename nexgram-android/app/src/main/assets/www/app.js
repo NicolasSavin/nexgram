@@ -508,6 +508,24 @@ if (state.activeId && state.chats.some((c) => c.id === state.activeId)) {
   openChat(state.activeId);
 }
 
+function radarSocket(wsUrl) {
+  if (window.RadarNative && typeof RadarNative.wsOpen === "function") {
+    const fake = {
+      readyState: 0,
+      send: function (s) { RadarNative.wsSend(String(s)); },
+      close: function () { RadarNative.wsClose(); },
+      onopen: null, onmessage: null, onerror: null, onclose: null
+    };
+    window.__radarWsOnOpen = function () { fake.readyState = 1; if (fake.onopen) fake.onopen(); };
+    window.__radarWsOnMessage = function (data) { if (fake.onmessage) fake.onmessage({ data: data }); };
+    window.__radarWsOnError = function (m) { if (fake.onerror) fake.onerror(new Error(m || "ws")); };
+    window.__radarWsOnClose = function () { fake.readyState = 3; if (fake.onclose) fake.onclose(); };
+    RadarNative.wsOpen(wsUrl);
+    return fake;
+  }
+  return new WebSocket(wsUrl);
+}
+
 const live = { ws: null, roomId: null, nick: null, enabled: false };
 
 function isLiveId(id) {
@@ -546,7 +564,10 @@ async function startLive(nick, roomId, pass) {
     : "";
   const relay = (window.NEXGRAM_RELAY || "").replace(/\/$/, "");
   let wsUrl;
-  if (here && location.hostname !== "appassets.androidplatform.net") {
+  if (window.RadarNative && RadarNative.wsOpen) {
+    const base = relay || "http://186.246.3.44";
+    wsUrl = base.replace(/^http/, "ws") + (base.indexOf("/ws") >= 0 ? "" : "/ws");
+  } else if (here && location.hostname !== "appassets.androidplatform.net") {
     wsUrl = here + "/ws";
   } else if (relay) {
     wsUrl = relay.replace(/^http/, "ws") + (relay.includes("/ws") ? "" : "/ws");
@@ -554,7 +575,7 @@ async function startLive(nick, roomId, pass) {
     alert("Укажите адрес реле NGP.");
     return;
   }
-  const ws = new WebSocket(wsUrl);
+  const ws = radarSocket(wsUrl);
   live.ws = ws;
   const chat = ensureLiveChat(roomId);
   chat.name = "🔒 " + roomId;
@@ -562,8 +583,8 @@ async function startLive(nick, roomId, pass) {
   const joined = new Promise((resolve, reject) => {
     const t = setTimeout(() => {
       try { ws.close(); } catch (e) {}
-      reject(new Error("relay timeout"));
-    }, 6000);
+      reject(new Error("Сервер не ответил. Проверьте сеть."));
+    }, 20000);
     live._relayOk = function () { clearTimeout(t); resolve(); };
     live._relayFail = function (e) { clearTimeout(t); reject(e || new Error("relay")); };
     ws.onerror = () => live._relayFail(new Error("ws error"));
@@ -576,7 +597,11 @@ async function startLive(nick, roomId, pass) {
       if (typeof PTT !== "undefined") PTT.handle(msg);
       chat.status = "ошибка NGP: " + (msg.body && msg.body.code);
       if (isLiveId(state.activeId)) els.convStatus.textContent = chat.status;
-      if (msg.body && msg.body.code === "BAD_COMMIT") alert("Неверный пароль комнаты (NGP BAD_COMMIT).");
+      if (msg.body && msg.body.code === "BAD_COMMIT") {
+        const err = new Error("Неверный пароль этой комнаты. Возьмите другой код, например radar.");
+        if (typeof live._relayFail === "function") live._relayFail(err);
+        else alert(err.message);
+      }
       return;
     }
     if (msg.t === "WELCOME") {
