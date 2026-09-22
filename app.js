@@ -459,6 +459,8 @@ document.getElementById("drawer").addEventListener("click", (e) => {
   const action = btn.dataset.action;
   openDrawer(false);
   if (action === "routes") openRoutes();
+  if (action === "guest" && window.radarToGuest) window.radarToGuest();
+  if (action === "work" && window.radarToWork) window.radarToWork();
   if (action === "saved") openChat("saved");
   if (action === "new") newChat();
   if (action === "theme") toggleTheme();

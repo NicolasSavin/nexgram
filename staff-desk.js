@@ -236,4 +236,32 @@
     var g = document.getElementById("gate");
     if (g) g.classList.remove("hidden");
   };
+
+  window.radarToGuest = function () {
+    try {
+      localStorage.setItem("radar-role-v1", "guest");
+      localStorage.removeItem("mm_user");
+    } catch (e) {}
+    if (typeof live !== "undefined") {
+      live.enabled = false;
+      try { if (live.ws) live.ws.close(); } catch (e) {}
+    }
+    setWorkForm(false);
+    applyDesk();
+    var rg = document.getElementById("roleGate");
+    var g = document.getElementById("gate");
+    if (rg) rg.classList.add("hidden");
+    if (g) g.classList.remove("hidden");
+    var t = document.querySelector("#gate h2");
+    if (t) t.textContent = "Гражданский чат";
+  };
+
+  window.radarToWork = function () {
+    try { localStorage.setItem("radar-role-v1", "work"); } catch (e) {}
+    setWorkForm(true);
+    var rg = document.getElementById("roleGate");
+    var g = document.getElementById("gate");
+    if (rg) rg.classList.add("hidden");
+    if (g) g.classList.remove("hidden");
+  };
 })();
