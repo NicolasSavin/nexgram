@@ -159,7 +159,11 @@ const server = http.createServer((req, res) => {
         sess.lastSeen = Date.now();
         const frameObj = body.frame || body;
         try {
-          handleMessage(sess, typeof frameObj === "string" ? frameObj : JSON.stringify(frameObj));
+          const rawFrame = typeof frameObj === "string" ? frameObj : JSON.stringify(frameObj);
+          let t = "";
+          try { t = (typeof frameObj === "object" && frameObj && frameObj.t) || JSON.parse(rawFrame).t; } catch (e2) {}
+          if (!sess.hello && t && t !== "HELLO") sess.hello = true;
+          handleMessage(sess, rawFrame);
         } catch (e) {}
         res.writeHead(200, Object.assign({ "Content-Type": "application/json" }, cors));
         res.end(JSON.stringify({ sid: sess.sid, out: sess.q.splice(0, 80) }));

@@ -592,10 +592,12 @@ function httpSocket(base) {
   base = String(base || "http://186.246.3.44").replace(/\/$/, "").replace(/\/ws$/, "");
   var sid = "";
   var stopped = false;
+  var busy = false;
+  var q = [];
   var fake = {
     readyState: 0,
-    send: function (s) { post(s); },
-    close: function () { stopped = true; fake.readyState = 3; },
+    send: function (s) { q.push(s); pump(); },
+    close: function () { stopped = true; fake.readyState = 3; q.length = 0; },
     _onopen: null,
     _onmessage: null,
     _onerror: null,
@@ -618,7 +620,10 @@ function httpSocket(base) {
       if (fake._onmessage) fake._onmessage({ data: typeof m === "string" ? m : JSON.stringify(m) });
     });
   }
-  function post(s) {
+  function pump() {
+    if (stopped || busy || !q.length) return;
+    busy = true;
+    var s = q.shift();
     var frame;
     try { frame = JSON.parse(s); } catch (e) { frame = s; }
     radarHttp("POST", base + "/ngp", JSON.stringify({ sid: sid, frame: frame })).then(function (text) {
@@ -626,7 +631,10 @@ function httpSocket(base) {
       try { j = JSON.parse(text); } catch (e) {}
       if (j.sid) sid = j.sid;
       emitOut(j.out);
+      busy = false;
+      pump();
     }).catch(function (e) {
+      busy = false;
       if (fake._onerror) fake._onerror(e);
     });
   }
@@ -687,7 +695,7 @@ async function startLive(nick, roomId, pass) {
   live.roomId = roomId;
   live.enabled = true;
   const chat = ensureLiveChat(roomId);
-  chat.name = "🔒 " + roomId;
+  chat.name = (roomId === "smena") ? "Чат работников" : roomId;
   chat.status = "подключение к реле…";
   if (typeof renderList === "function") renderList();
   const commit = await NGP.commit(roomId, pass);

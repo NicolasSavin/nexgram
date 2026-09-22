@@ -8,7 +8,6 @@
     routes: { url: SITE, name: "Маршруты", color: "#c8943c", initials: "М" },
     hotels: { url: SITE + "hotels.html", name: "Гостиницы", color: "#d4b483", initials: "ГС" },
     where: { url: SITE + "where.html", name: "Кто где", color: "#faa774", initials: "КГ" },
-    teamchat: { url: SITE + "team.html", name: "Чат работников", color: "#2aabee", initials: "ЧР" },
     naryad: { url: SITE + "naryad.html", name: "Наряд", color: "#a695e7", initials: "НР" },
     helper: { url: SITE + "chat.html", name: "Помощник смены", color: "#7bc862", initials: "ИИ" }
   };
@@ -24,6 +23,11 @@
 
   function workChats() {
     var list = [];
+    list.push({
+      id: "room:smena", name: "Чат работников", type: "group", color: "#2aabee", initials: "ЧР",
+      status: "чат и рация", unread: 0, room: "smena",
+      messages: [{ id: 1, from: "them", text: "Общий чат смены: текст, фото и рация (PTT внизу). Посторонние сюда не входят.", ts: Date.now() }]
+    });
     Object.keys(PAGES).forEach(function (id) {
       var p = PAGES[id];
       list.push({
@@ -35,15 +39,10 @@
     list.push({
       id: "guide", name: "Инструкция", type: "channel", color: "#6ec9cb", initials: "?",
       status: "памятка", unread: 0,
-      messages: [{ id: 1, from: "them", text: "РАДАР — памятка\n\n1. Служебный вход (не «Я пользователь»).\n2. Код смены: охрана — посторонним не говорить.\n3. Фамилия из списка, пароль как на сайте (дата рождения, 8 цифр).\n4. Маршруты, гостиницы, кто где, чат работников, наряд, помощник — страницы с сайта.\n5. Рация только одна: пункт «Рация» слева. Красная PTT. «Рация сайта» в приложении микрофон не получает — её убрали.\n6. Скрепка — фото/видео в эфир. Уходит шифром, сервер кашу не читает. Видят только кто вошёл в ту же смену. Гости этого не видят. Скриншот с экрана — уже не секрет.\n7. Посторонним только «Я пользователь». Список фамилий им не показывают.", ts: Date.now() }]
+      messages: [{ id: 1, from: "them", text: "РАДАР — памятка\n\n1. Служебный вход (не «Я пользователь»).\n2. Код смены: охрана — посторонним не говорить.\n3. Фамилия из списка, пароль как на сайте (дата рождения, 8 цифр).\n4. Маршруты, гостиницы, кто где, чат работников, наряд, помощник — страницы с сайта.\n5. Чат работников — единственный эфир: пишите, шлите фото, внизу PTT.\n6. Скрепка — фото/видео в эфир. Уходит шифром, сервер кашу не читает. Видят только кто вошёл в ту же смену. Гости этого не видят. Скриншот с экрана — уже не секрет.\n7. Посторонним только «Я пользователь». Список фамилий им не показывают.", ts: Date.now() }]
     });
     list.push({
-      id: "room:smena", name: "Рация", type: "group", color: "#ee7aae", initials: "Р",
-      status: "один эфир смены", unread: 0, room: "smena",
-      messages: [{ id: 1, from: "them", text: "Единственная рация. Зажмите красную кнопку и говорите. Подпись — ваша фамилия.", ts: Date.now() }]
-    });
-    return list;
-  }
+      id: "guide", name: "Инструкция", type: "channel", color: "#6ec9cb", initials: "?",
 
   function guestChats() {
     return [
@@ -85,7 +84,7 @@
   if (typeof openChat === "function") {
     var prevOpen = openChat;
     openChat = function (id) {
-      if (id === "radio" || id === "room:smena") {
+      if (id === "radio" || id === "room:smena" || id === "teamchat") {
         prevOpen("room:smena");
         return;
       }
@@ -120,12 +119,16 @@
       staffOk = false;
       if (sel) sel.innerHTML = "";
     } else {
-      if (title) title.textContent = "Комната";
+      if (title) title.textContent = "Гражданский чат";
       vis(nick, true);
       vis(sel, false);
       vis(room, true);
       vis(pass, true);
       vis(pin, false);
+      var passLab = pass && pass.previousElementSibling;
+      if (passLab) passLab.textContent = "Пароль комнаты (свой, не с сайта)";
+      var roomLab = room && room.previousElementSibling;
+      if (roomLab) roomLab.textContent = "Код комнаты";
       if (join) join.textContent = "Войти";
       staffOk = false;
     }
