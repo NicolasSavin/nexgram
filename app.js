@@ -143,9 +143,12 @@ const STORAGE_KEY = "nexgram-v1";
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const s = JSON.parse(raw);
+      if (s && Array.isArray(s.chats)) return s;
+    }
   } catch {}
-  return { chats: structuredClone(DEFAULT_CHATS), theme: "dark", activeId: null };
+  return { chats: JSON.parse(JSON.stringify(DEFAULT_CHATS)), theme: "dark", activeId: null };
 }
 function saveState() {
   try {
@@ -182,8 +185,10 @@ function mergeDesk(fresh) {
 window.mergeDesk = mergeDesk;
 
 const state = loadState();
+if (!state.chats) state.chats = JSON.parse(JSON.stringify(DEFAULT_CHATS));
 if (!state.chats.some((c) => c.id === "routes")) {
-  state.chats.unshift(structuredClone(DEFAULT_CHATS.find((c) => c.id === "routes")));
+  const routes = DEFAULT_CHATS.find((c) => c.id === "routes");
+  if (routes) state.chats.unshift(JSON.parse(JSON.stringify(routes)));
 }
 let emojiOpen = false;
 

@@ -5,9 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#17212b" />
   <title>Радар</title>
+  <style>
+    html,body{margin:0;background:#0e1621;color:#eef3f8;min-height:100%;font-family:sans-serif}
+    #boot{position:fixed;inset:0;z-index:9999;background:#0e1621;color:#eef3f8;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+    #boot h1{font-size:32px;margin:0}
+    #boot p{color:#8da3b5}
+  </style>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <div id="boot"><h1>Радар</h1><p>загрузка…</p></div>
   <div class="app" id="app">
     <aside class="sidebar" id="sidebar">
       <header class="sidebar-header">
@@ -106,5 +113,9 @@
   <script src="staff-desk.js"></script>
   <script src="access.js"></script>
   <script src="live-ui.js"></script>
+  <script>
+    (function(){ var b=document.getElementById("boot"); if(b) b.remove(); })();
+    window.onerror=function(m){ var b=document.getElementById("boot"); if(!b){ b=document.createElement("div"); b.id="boot"; document.body.appendChild(b);} b.innerHTML="<h1>Радар</h1><p>"+m+"</p>"; b.style.display="flex"; };
+  </script>
 </body>
 </html>

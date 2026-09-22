@@ -49,6 +49,7 @@ class MainActivity : AppCompatActivity() {
         androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, true)
         setContentView(R.layout.activity_main)
         web = findViewById(R.id.web)
+        web.setBackgroundColor(android.graphics.Color.parseColor("#0E1621"))
         requestAppPerms()
 
         val assetLoader = WebViewAssetLoader.Builder()
@@ -61,7 +62,7 @@ class MainActivity : AppCompatActivity() {
         s.databaseEnabled = true
         s.mediaPlaybackRequiresUserGesture = false
         s.allowFileAccess = true
-        s.cacheMode = WebSettings.LOAD_DEFAULT
+        s.cacheMode = WebSettings.LOAD_NO_CACHE
         s.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         WebView.setWebContentsDebuggingEnabled(true)
         web.isFocusable = true
