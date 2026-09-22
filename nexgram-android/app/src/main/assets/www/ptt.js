@@ -37,7 +37,7 @@ const PTT = {
     btn && btn.classList.add("hot");
     const online = this.send("PTT_START", { room: live.roomId, nick: live.nick });
     if (!online) {
-      this.status("Нет реле — подключаю…", "live");
+      this.status("Ждём реле…", "live");
       if (typeof startLive === "function" && live.nick && live.roomId) {
         try {
           var g = (typeof loadGate === "function" && loadGate()) || {};

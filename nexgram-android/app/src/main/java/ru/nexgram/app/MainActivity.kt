@@ -205,7 +205,8 @@ class MainActivity : AppCompatActivity() {
         @JavascriptInterface
         fun wsOpen(url: String) {
             nativeWs?.cancel()
-            val req = Request.Builder().url(url).build()
+            val httpUrl = url.replace(Regex("^ws://"), "http://").replace(Regex("^wss://"), "https://")
+            val req = Request.Builder().url(httpUrl).build()
             nativeWs = okHttp.newWebSocket(req, object : WebSocketListener() {
                 override fun onOpen(webSocket: WebSocket, response: Response) {
                     runOnUiThread { web.evaluateJavascript("window.__radarWsOnOpen&&window.__radarWsOnOpen()", null) }

@@ -560,7 +560,7 @@ function radarSocket(wsUrl) {
       fake.readyState = 3;
       if (fake._onclose) fake._onclose();
     };
-    RadarNative.wsOpen(wsUrl);
+    RadarNative.wsOpen(String(wsUrl).replace(/^ws:/, "http:").replace(/^wss:/, "https:"));
     return fake;
   }
   return new WebSocket(wsUrl);
@@ -609,11 +609,12 @@ async function startLive(nick, roomId, pass) {
     : "";
   const relay = (window.NEXGRAM_RELAY || "").replace(/\/$/, "");
   let wsUrl;
-  if (window.RadarNative && RadarNative.wsOpen) {
+  const nativeOnly = location.hostname === "appassets.androidplatform.net";
+  if (here && !nativeOnly) {
+    wsUrl = here + "/ws";
+  } else if (window.RadarNative && RadarNative.wsOpen) {
     const base = relay || "http://186.246.3.44";
     wsUrl = base.replace(/^http/, "ws") + (base.indexOf("/ws") >= 0 ? "" : "/ws");
-  } else if (here && location.hostname !== "appassets.androidplatform.net") {
-    wsUrl = here + "/ws";
   } else if (relay) {
     wsUrl = relay.replace(/^http/, "ws") + (relay.includes("/ws") ? "" : "/ws");
   } else {
