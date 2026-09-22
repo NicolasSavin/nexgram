@@ -2,9 +2,7 @@ package ru.nexgram.app
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Bundle
 import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
@@ -46,6 +44,8 @@ class MainActivity : AppCompatActivity() {
         s.cacheMode = WebSettings.LOAD_DEFAULT
         s.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         WebView.setWebContentsDebuggingEnabled(true)
+        web.isFocusable = true
+        web.isFocusableInTouchMode = true
 
         web.webChromeClient = object : WebChromeClient() {
             override fun onPermissionRequest(request: PermissionRequest) {
@@ -84,14 +84,13 @@ class MainActivity : AppCompatActivity() {
     private fun checkUpdate() {
         val current = try {
             packageManager.getPackageInfo(packageName, 0).versionCode
-        } catch (_: Exception) { 4 }
+        } catch (_: Exception) { 6 }
         thread {
             try {
                 val raw = URL("https://nicolassavin.github.io/nexgram/version.json").readText()
                 val j = JSONObject(raw)
                 val remote = j.optInt("versionCode", 0)
                 val name = j.optString("versionName", "")
-                val apk = j.optString("apk", "https://github.com/NicolasSavin/nexgram/actions")
                 if (remote > current) {
                     runOnUiThread {
                         AlertDialog.Builder(this)
@@ -115,7 +114,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun injectRelay() {
-        val js = "window.NEXGRAM_RELAY = ${org.json.JSONObject.quote("https://karavanmessage.ru")};"
+        val js = "window.NEXGRAM_RELAY = ${org.json.JSONObject.quote("http://186.246.3.44")};"
         web.evaluateJavascript(js, null)
     }
 
