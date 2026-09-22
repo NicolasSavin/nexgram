@@ -58,6 +58,16 @@ function parse(raw) {
   return { msg };
 }
 
+function nicksOf(roomId) {
+  const set = rooms.get(roomId);
+  if (!set) return [];
+  const names = [];
+  set.forEach((s) => {
+    if (s.nick) names.push(String(s.nick).slice(0, 32));
+  });
+  return names;
+}
+
 function broadcast(roomId, t, body, except) {
   const set = rooms.get(roomId);
   if (!set) return;
@@ -148,16 +158,17 @@ wss.on("connection", (ws) => {
         room,
         nick,
         peers: rooms.get(room).size,
+        names: nicksOf(room),
         history: recent.get(room) || []
       }, msg.id);
-      broadcast(room, "PEERS", { room, count: rooms.get(room).size }, null);
+      broadcast(room, "PEERS", { room, count: rooms.get(room).size, names: nicksOf(room) }, null);
       return;
     }
 
     if (t === "LEAVE") {
       if (ws.roomId && rooms.has(ws.roomId)) {
         rooms.get(ws.roomId).delete(ws);
-        broadcast(ws.roomId, "PEERS", { room: ws.roomId, count: rooms.get(ws.roomId).size }, null);
+        broadcast(ws.roomId, "PEERS", { room: ws.roomId, count: rooms.get(ws.roomId).size, names: nicksOf(ws.roomId) }, null);
       }
       ws.roomId = null;
       send(ws, "ACK", { of: msg.id });

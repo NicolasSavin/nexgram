@@ -13,7 +13,12 @@ import android.webkit.WebView
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
-import android.webkit.ValueCallback
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.os.Build
+import android.webkit.JavascriptInterface
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -52,6 +57,8 @@ class MainActivity : AppCompatActivity() {
         WebView.setWebContentsDebuggingEnabled(true)
         web.isFocusable = true
         web.isFocusableInTouchMode = true
+        web.addJavascriptInterface(RadarBridge(), "RadarNative")
+        ensureMsgChannel()
 
         web.webChromeClient = object : WebChromeClient() {
             override fun onPermissionRequest(request: PermissionRequest) {
@@ -142,6 +149,9 @@ class MainActivity : AppCompatActivity() {
         } else {
             want += Manifest.permission.READ_EXTERNAL_STORAGE
         }
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            want += Manifest.permission.POST_NOTIFICATIONS
+        }
         val need = want.filter {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }
@@ -162,6 +172,57 @@ class MainActivity : AppCompatActivity() {
         val uri = if (resultCode == Activity.RESULT_OK) data?.data else null
         filePathCallback?.onReceiveValue(if (uri != null) arrayOf(uri) else null)
         filePathCallback = null
+    }
+
+    inner class RadarBridge {
+        @JavascriptInterface
+        fun notify(title: String, body: String) {
+            runOnUiThread { showMsg(title, body) }
+        }
+        @JavascriptInterface
+        fun keepAlive(on: Boolean) {
+            runOnUiThread {
+                val i = Intent(this@MainActivity, RadarService::class.java)
+                if (on) {
+                    if (Build.VERSION.SDK_INT >= 26) startForegroundService(i) else startService(i)
+                } else stopService(i)
+            }
+        }
+    }
+
+    private fun ensureMsgChannel() {
+        if (Build.VERSION.SDK_INT < 26) return
+        val nm = getSystemService(NotificationManager::class.java)
+        val ch = NotificationChannel("radar_msg", "Сообщения Радара", NotificationManager.IMPORTANCE_HIGH)
+        ch.enableVibration(true)
+        ch.setSound(android.provider.Settings.System.DEFAULT_NOTIFICATION_URI, Notification.AUDIO_ATTRIBUTES_DEFAULT)
+        nm.createNotificationChannel(ch)
+    }
+
+    private fun showMsg(title: String, body: String) {
+        val nm = getSystemService(NotificationManager::class.java)
+        val open = PendingIntent.getActivity(
+            this, 2, Intent(this, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val n = if (Build.VERSION.SDK_INT >= 26) {
+            Notification.Builder(this, "radar_msg")
+        } else {
+            @Suppress("DEPRECATION")
+            Notification.Builder(this)
+        }
+            .setContentTitle(title)
+            .setContentText(body)
+            .setSmallIcon(R.drawable.ic_radar)
+            .setContentIntent(open)
+            .setAutoCancel(true)
+            .setDefaults(Notification.DEFAULT_ALL)
+            .build()
+        nm.notify((System.currentTimeMillis() % 100000).toInt(), n)
+    }
+
+    override fun onPause() {
+        super.onPause()
     }
 
     @Deprecated("Deprecated in Java")

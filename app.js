@@ -463,6 +463,11 @@ document.getElementById("drawer").addEventListener("click", (e) => {
   if (action === "guest" && window.radarToGuest) window.radarToGuest();
   if (action === "work" && window.radarToWork) window.radarToWork();
   if (action === "saved") openChat("saved");
+  if (action === "rooms") {
+    var list = (window.RadarLive && RadarLive.loadRooms()) || [];
+    if (!list.length) alert("Пока нет комнат, в которые вы входили.");
+    else alert("Комнаты:\n" + list.map(function (r) { return r.room + (r.nick ? " · " + r.nick : ""); }).join("\n") + "\n\nОни же в списке слева. Нажмите, чтобы войти снова.");
+  }
   if (action === "new") newChat();
   if (action === "theme") toggleTheme();
   if (action === "reset") resetDemo();
@@ -539,6 +544,10 @@ async function startLive(nick, roomId, pass) {
     }
     if (msg.t === "JOINED") {
       chat.status = "NGP/1 · " + (msg.body.peers || 1);
+      if (window.RadarLive) {
+        RadarLive.setOnline(msg.body.names || []);
+        RadarLive.keep(true);
+      }
       if (typeof live._relayOk === "function") {
         live._relayOk();
         live._relayOk = null;
@@ -562,8 +571,11 @@ async function startLive(nick, roomId, pass) {
       return;
     }
     if (msg.t === "PEERS") {
-      chat.status = "NGP/1 · " + msg.body.count;
-      if (state.activeId === "live") els.convStatus.textContent = chat.status;
+      if (window.RadarLive) RadarLive.setOnline(msg.body.names || []);
+      else {
+        chat.status = "NGP/1 · " + msg.body.count;
+        if (state.activeId === "live") els.convStatus.textContent = chat.status;
+      }
       return;
     }
     if (typeof PTT !== "undefined") PTT.handle(msg);
@@ -580,6 +592,7 @@ async function startLive(nick, roomId, pass) {
         text,
         ts: msg.ts
       });
+      if (b.nick !== live.nick && window.RadarLive) RadarLive.notify(b.nick || "Радар", text.slice(0, 80));
       if (state.activeId !== "live") chat.unread = (chat.unread || 0) + 1;
       saveState();
       if (state.activeId === "live") renderMessages(chat);

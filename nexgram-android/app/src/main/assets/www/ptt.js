@@ -94,6 +94,7 @@ const PTT = {
     if (msg.t === "PTT_START") {
       if (b.nick === (live && live.nick)) return;
       this.status("Эфир: " + (b.nick || "абонент"), "rx");
+      if (window.RadarLive) RadarLive.notify(b.nick || "Рация", "Говорит в эфире");
       return;
     }
     if (msg.t === "PTT_END") {
