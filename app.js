@@ -681,7 +681,8 @@ document.getElementById("gateJoin").addEventListener("click", async () => {
     await startLive(nick, room, pass);
     document.getElementById("gate").classList.add("hidden");
   } catch (e) {
-    alert("Не удалось включить шифрование в этом браузере.");
+    const m = (e && e.message) ? e.message : String(e);
+    alert("Нет связи с реле или ошибка входа.\n" + m);
   }
 });
 document.getElementById("gateSkip").addEventListener("click", () => {

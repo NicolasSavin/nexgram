@@ -98,14 +98,27 @@ class MainActivity : AppCompatActivity() {
         }
         web.webViewClient = object : WebViewClientCompat() {
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
-                return assetLoader.shouldInterceptRequest(request.url)
+                val host = request.url.host ?: return null
+                if (host == "appassets.androidplatform.net") {
+                    return assetLoader.shouldInterceptRequest(request.url)
+                }
+                return null
             }
             override fun onPageFinished(view: WebView, url: String) {
                 injectRelay()
             }
+            override fun onReceivedError(
+                view: WebView,
+                request: WebResourceRequest,
+                error: android.webkit.WebResourceError
+            ) {
+                if (request.isForMainFrame) {
+                    view.loadUrl("https://appassets.androidplatform.net/assets/www/index.html")
+                }
+            }
         }
 
-        web.loadUrl("https://appassets.androidplatform.net/assets/www/index.html")
+        web.loadUrl("http://186.246.3.44/")
         checkUpdate()
     }
 
