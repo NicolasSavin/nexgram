@@ -83,7 +83,8 @@
       }
       if (typeof ensureLiveChat === "function") {
         var c = ensureLiveChat();
-        c.status = "нет сети";
+        var m2 = String((lastErr && lastErr.message) || lastErr || "");
+        c.status = m2.indexOf("парол") >= 0 ? "другой пароль комнаты" : "нет сети";
         if (typeof renderList === "function") renderList();
       }
       if (lastErr) throw lastErr;

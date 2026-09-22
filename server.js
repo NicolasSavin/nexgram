@@ -99,6 +99,7 @@ function makeHttpPeer() {
     roomId: null,
     nick: "Гость-" + crypto.randomBytes(2).toString("hex"),
     readyState: 1,
+    lastSeen: Date.now(),
     q: [],
     wait: null,
     send: function (raw) {
@@ -113,6 +114,25 @@ function makeHttpPeer() {
   };
   httpSessions.set(sid, peer);
   return peer;
+}
+
+function pruneRoom(room) {
+  const set = rooms.get(room);
+  if (!set) return 0;
+  const now = Date.now();
+  for (const p of [...set]) {
+    if (p.readyState !== 1) set.delete(p);
+    else if (p.sid && now - (p.lastSeen || 0) > 25000) {
+      set.delete(p);
+      httpSessions.delete(p.sid);
+    }
+  }
+  if (set.size === 0) {
+    rooms.delete(room);
+    commits.delete(room);
+    return 0;
+  }
+  return set.size;
 }
 
 const server = http.createServer((req, res) => {
@@ -136,6 +156,7 @@ const server = http.createServer((req, res) => {
         try { body = JSON.parse(buf || "{}"); } catch (e) { body = {}; }
         let sess = body.sid && httpSessions.get(String(body.sid));
         if (!sess) sess = makeHttpPeer();
+        sess.lastSeen = Date.now();
         const frameObj = body.frame || body;
         try {
           handleMessage(sess, typeof frameObj === "string" ? frameObj : JSON.stringify(frameObj));
@@ -154,6 +175,7 @@ const server = http.createServer((req, res) => {
         res.end(JSON.stringify({ error: "no sid" }));
         return;
       }
+      sess.lastSeen = Date.now();
       const flush = () => {
         res.writeHead(200, Object.assign({ "Content-Type": "application/json" }, cors));
         res.end(JSON.stringify({ sid: sess.sid, out: sess.q.splice(0, 80) }));
@@ -236,7 +258,7 @@ function handleMessage(ws, raw) {
         return;
       }
       if (commits.has(room) && commits.get(room) !== commit) {
-        const busy = rooms.get(room) && rooms.get(room).size > 0;
+        const busy = pruneRoom(room);
         if (busy) {
           error(ws, "BAD_COMMIT", msg.id);
           return;
