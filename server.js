@@ -203,6 +203,59 @@ const server = http.createServer((req, res) => {
     res.end();
     return;
   }
+  if (urlPath === "/naryad") {
+    const NARYAD_FILE = path.join(ROOT, "naryad.json");
+    const today = new Date().toISOString().slice(0, 10);
+    const loadN = () => {
+      let data = { date: today, naryad: {}, incidents: [] };
+      try { data = JSON.parse(fs.readFileSync(NARYAD_FILE, "utf8")); } catch (e) {}
+      if (data.date !== today) data = { date: today, naryad: {}, incidents: [] };
+      data.naryad = data.naryad || {};
+      data.incidents = data.incidents || [];
+      return data;
+    };
+    const saveN = (d) => { try { fs.writeFileSync(NARYAD_FILE, JSON.stringify(d)); } catch (e) {} };
+    if (req.method === "GET") {
+      res.writeHead(200, Object.assign({ "Content-Type": "application/json" }, cors));
+      res.end(JSON.stringify(loadN()));
+      return;
+    }
+    if (req.method === "POST") {
+      let buf = "";
+      req.on("data", (c) => { buf += c; if (buf.length > 20000) req.destroy(); });
+      req.on("end", () => {
+        let body = {};
+        try { body = JSON.parse(buf || "{}"); } catch (e) { body = {}; }
+        const data = loadN();
+        if (body.action === "incident") {
+          data.incidents.push({
+            login: String(body.login || "").slice(0, 64),
+            name: String(body.name || "").slice(0, 80),
+            text: String(body.text || "").slice(0, 1000),
+            ts: Math.floor(Date.now() / 1000)
+          });
+        } else {
+          data.naryad = {
+            from: String(body.from || "").slice(0, 80),
+            to: String(body.to || "").slice(0, 80),
+            cargo: String(body.cargo || "").slice(0, 120),
+            senior: String(body.senior || "").slice(0, 80),
+            hotel: String(body.hotel || "").slice(0, 80),
+            crew: String(body.crew || "").slice(0, 200),
+            note: String(body.note || "").slice(0, 500),
+            by: String(body.name || body.by || "").slice(0, 80)
+          };
+        }
+        saveN(data);
+        res.writeHead(200, Object.assign({ "Content-Type": "application/json" }, cors));
+        res.end(JSON.stringify(Object.assign({ ok: true }, data)));
+      });
+      return;
+    }
+    res.writeHead(405, cors);
+    res.end();
+    return;
+  }
   let file = urlPath === "/" ? "/index.html" : urlPath;
   file = path.normalize(file).replace(/^(\.\.[/\\])+/, "");
   const abs = path.join(ROOT, file);

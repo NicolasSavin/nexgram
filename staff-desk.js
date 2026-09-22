@@ -8,7 +8,7 @@
     routes: { url: SITE, name: "Маршруты", color: "#c8943c", initials: "М" },
     hotels: { url: SITE + "hotels.html", name: "Гостиницы", color: "#d4b483", initials: "ГС" },
     where: { url: SITE + "where.html", name: "Кто где", color: "#faa774", initials: "КГ" },
-    naryad: { url: SITE + "naryad.html", name: "Наряд", color: "#a695e7", initials: "НР" },
+    naryad: { url: "naryad.html", name: "Наряд", color: "#a695e7", initials: "НР" },
     helper: { url: SITE + "chat.html", name: "Помощник смены", color: "#7bc862", initials: "ИИ" }
   };
 

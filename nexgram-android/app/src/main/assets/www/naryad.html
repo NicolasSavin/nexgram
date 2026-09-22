@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Наряд</title>
+<style>
+body{margin:0;font-family:system-ui,sans-serif;background:#0e1621;color:#eef3f8;padding:16px}
+h1{margin:0 0 8px;font-size:24px}
+.lead{color:#8da3b5;margin:0 0 12px}
+.card{background:#17212b;border-radius:16px;padding:14px;margin:10px 0}
+label{display:block;font-size:11px;color:#d4b483;margin:8px 0 4px;text-transform:uppercase;letter-spacing:.08em}
+input,textarea{width:100%;box-sizing:border-box;padding:10px 12px;border-radius:10px;border:0;background:#0b1624;color:#fff;font:inherit}
+textarea{min-height:64px}
+.go{margin-top:12px;border:0;border-radius:999px;padding:12px 18px;font:inherit;font-weight:700;background:#c8943c;color:#1a1206}
+.kv{margin:8px 0}.kv b{color:#d4b483;display:inline-block;min-width:90px;font-size:12px}
+.ok{color:#8ee0b5}.err{color:#f3b4b4}
+.inc{padding:8px 0;border-top:1px solid #243242}
+</style>
+</head>
+<body>
+<h1>Наряд смены</h1>
+<p class="lead" id="when"></p>
+<div class="card" id="view">загрузка…</div>
+<div class="card">
+<b>Поставить наряд</b>
+<label>Откуда</label><input id="fr">
+<label>Куда</label><input id="to">
+<label>Груз</label><input id="cg">
+<label>Старший</label><input id="sr">
+<label>Гостиница</label><input id="ht">
+<label>Состав</label><input id="cr">
+<label>Примечание</label><textarea id="nt"></textarea>
+<button class="go" type="button" id="saveN">Сохранить</button>
+<p class="ok" id="saved"></p>
+</div>
+<div class="card">
+<b>Журнал ЧП</b>
+<div id="inc"></div>
+<label>Запись</label>
+<input id="incText">
+<button class="go" type="button" id="saveInc">Добавить</button>
+</div>
+<script>
+var API = "http://186.246.3.44/naryad";
+function user(){
+  try {
+    var h = (location.hash||"").replace(/^#/,"");
+    if (h.indexOf("mm=")==0) return JSON.parse(decodeURIComponent(h.slice(3)));
+  } catch(e) {}
+  try { return JSON.parse(localStorage.getItem("mm_user")||"null"); } catch(e){ return null; }
+}
+function esc(s){ return String(s||"").replace(/</g,""); }
+function draw(j){
+  document.getElementById("when").textContent = "Сегодня " + (j.date||"");
+  var n = j.naryad || {};
+  var empty = !n.from && !n.to && !n.cargo;
+  document.getElementById("view").innerHTML = empty
+    ? "<p class='lead'>Наряд ещё не поставлен.</p>"
+    : "<div class='kv'><b>Маршрут</b> "+esc(n.from)+" → "+esc(n.to)+"</div>"
+     +"<div class='kv'><b>Груз</b> "+esc(n.cargo||"—")+"</div>"
+     +"<div class='kv'><b>Старший</b> "+esc(n.senior||"—")+"</div>"
+     +"<div class='kv'><b>Состав</b> "+esc(n.crew||"—")+"</div>"
+     +"<div class='kv'><b>Гостиница</b> "+esc(n.hotel||"—")+"</div>"
+     +(n.note? "<div class='kv'><b>Указания</b> "+esc(n.note)+"</div>":"")
+     +(n.by? "<div class='kv'><b>Поставил</b> "+esc(n.by)+"</div>":"");
+  if (!empty) {
+    document.getElementById("fr").value = n.from||"";
+    document.getElementById("to").value = n.to||"";
+    document.getElementById("cg").value = n.cargo||"";
+    document.getElementById("sr").value = n.senior||"";
+    document.getElementById("ht").value = n.hotel||"";
+    document.getElementById("cr").value = n.crew||"";
+    document.getElementById("nt").value = n.note||"";
+  }
+  var inc = j.incidents||[];
+  document.getElementById("inc").innerHTML = inc.length
+    ? inc.slice().reverse().map(function(x){
+        var t = x.ts ? new Date(x.ts*1000).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"}) : "";
+        return "<div class='inc'><div>"+esc(x.name||x.login)+"</div><div>"+esc(x.text)+"</div><div class='lead'>"+t+"</div></div>";
+      }).join("")
+    : "<p class='lead'>ЧП нет.</p>";
+}
+function load(){
+  fetch(API).then(function(r){ return r.json(); }).then(draw).catch(function(){
+    document.getElementById("view").innerHTML = "<p class='err'>Нет связи с сервером наряда. Обновите server.js на VPS.</p>";
+  });
+}
+document.getElementById("saveN").onclick = function(){
+  var u = user() || {};
+  var body = {
+    from: document.getElementById("fr").value.trim(),
+    to: document.getElementById("to").value.trim(),
+    cargo: document.getElementById("cg").value.trim(),
+    senior: document.getElementById("sr").value.trim(),
+    hotel: document.getElementById("ht").value.trim(),
+    crew: document.getElementById("cr").value.trim(),
+    note: document.getElementById("nt").value.trim(),
+    name: u.name || u.login || ""
+  };
+  fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)})
+    .then(function(r){ return r.json(); })
+    .then(function(j){ document.getElementById("saved").textContent="Сохранено"; draw(j); })
+    .catch(function(){ document.getElementById("saved").textContent="Не сохранилось"; document.getElementById("saved").className="err"; });
+};
+document.getElementById("saveInc").onclick = function(){
+  var u = user() || {};
+  var text = document.getElementById("incText").value.trim();
+  if (!text) return;
+  fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"incident",login:u.login||"",name:u.name||u.login||"",text:text})})
+    .then(function(r){ return r.json(); })
+    .then(function(j){ document.getElementById("incText").value=""; draw(j); });
+};
+load();
+</script>
+</body>
+</html>
