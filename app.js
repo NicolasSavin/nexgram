@@ -278,6 +278,30 @@ function renderMessages(chat) {
       box.appendChild(play);
       el.querySelector(".text").after(box);
     }
+    if (m.image) {
+      const img = document.createElement("img");
+      img.src = m.image;
+      img.alt = "фото";
+      img.style.maxWidth = "220px";
+      img.style.borderRadius = "10px";
+      img.style.display = "block";
+      img.style.margin = "6px 0";
+      el.querySelector(".text").after(img);
+    }
+    if (m.video) {
+      const v = document.createElement("video");
+      v.src = m.video;
+      v.controls = true;
+      v.style.maxWidth = "240px";
+      v.style.borderRadius = "10px";
+      el.querySelector(".text").after(v);
+    }
+    if (m.audio && !m.voice) {
+      const a = document.createElement("audio");
+      a.src = m.audio;
+      a.controls = true;
+      el.querySelector(".text").after(a);
+    }
     els.messages.appendChild(el);
   });
   els.messages.scrollTop = els.messages.scrollHeight;
@@ -402,7 +426,8 @@ els.backBtn.addEventListener("click", () => {
   saveState();
 });
 els.attachBtn.addEventListener("click", () => {
-  alert("В этом прототипе вложения имитируются текстом.\nМожно написать, например: [фото] закат.jpg");
+  const pick = document.getElementById("filePick");
+  if (pick) pick.click();
 });
 
 EMOJIS.forEach((e) => {
@@ -523,6 +548,7 @@ async function startLive(nick, roomId, pass) {
       return;
     }
     if (typeof PTT !== "undefined") PTT.handle(msg);
+    if (typeof RadarMedia !== "undefined" && RadarMedia.handle(msg)) return;
     if (msg.t === "CIPHER") {
       const b = msg.body || {};
       const text = await LiveCrypto.decrypt(b.iv, b.data);

@@ -9,7 +9,10 @@ import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
-import android.webkit.WebView
+import android.app.Activity
+import android.content.Intent
+import android.net.Uri
+import android.webkit.ValueCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -23,6 +26,7 @@ import kotlin.concurrent.thread
 class MainActivity : AppCompatActivity() {
     private lateinit var web: WebView
     private var pendingMic: PermissionRequest? = null
+    private var filePathCallback: ValueCallback<Array<Uri>>? = null
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -66,6 +70,20 @@ class MainActivity : AppCompatActivity() {
                         31
                     )
                 }
+            }
+            override fun onShowFileChooser(
+                webView: WebView,
+                filePathCallback: ValueCallback<Array<Uri>>,
+                fileChooserParams: FileChooserParams
+            ): Boolean {
+                this@MainActivity.filePathCallback?.onReceiveValue(null)
+                this@MainActivity.filePathCallback = filePathCallback
+                val intent = Intent(Intent.ACTION_GET_CONTENT)
+                intent.addCategory(Intent.CATEGORY_OPENABLE)
+                intent.type = "*/*"
+                intent.putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("image/*", "video/*", "audio/*"))
+                startActivityForResult(Intent.createChooser(intent, "Файл"), 77)
+                return true
             }
         }
         web.webViewClient = object : WebViewClientCompat() {
@@ -116,6 +134,15 @@ class MainActivity : AppCompatActivity() {
     private fun injectRelay() {
         val js = "window.NEXGRAM_RELAY = ${org.json.JSONObject.quote("https://karavanmessage.ru")};"
         web.evaluateJavascript(js, null)
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != 77) return
+        val uri = if (resultCode == Activity.RESULT_OK) data?.data else null
+        filePathCallback?.onReceiveValue(if (uri != null) arrayOf(uri) else null)
+        filePathCallback = null
     }
 
     @Deprecated("Deprecated in Java")
