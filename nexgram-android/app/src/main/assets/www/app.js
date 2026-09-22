@@ -248,6 +248,8 @@ function openChat(id) {
   renderMessages(chat);
   renderList(els.search.value);
   els.input.focus();
+  var ptt = document.querySelector(".ptt-wrap");
+  if (ptt) ptt.style.display = id === "live" ? "" : "none";
 }
 
 function renderMessages(chat) {
@@ -508,6 +510,15 @@ async function startLive(nick, roomId, pass) {
   const chat = ensureLiveChat();
   chat.name = "🔒 " + roomId;
   const commit = await NGP.commit(roomId, pass);
+  const joined = new Promise((resolve, reject) => {
+    const t = setTimeout(() => {
+      try { ws.close(); } catch (e) {}
+      reject(new Error("relay timeout"));
+    }, 6000);
+    live._relayOk = function () { clearTimeout(t); resolve(); };
+    live._relayFail = function (e) { clearTimeout(t); reject(e || new Error("relay")); };
+    ws.onerror = () => live._relayFail(new Error("ws error"));
+  });
   ws.onopen = () => ws.send(JSON.stringify(NGP.frame("HELLO", { client: "nexgram-web/0.3", features: ["aes-gcm", "history"] })));
   ws.onmessage = async (ev) => {
     const msg = NGP.parse(ev.data);
@@ -525,6 +536,11 @@ async function startLive(nick, roomId, pass) {
     }
     if (msg.t === "JOINED") {
       chat.status = "NGP/1 · " + (msg.body.peers || 1);
+      if (typeof live._relayOk === "function") {
+        live._relayOk();
+        live._relayOk = null;
+        live._relayFail = null;
+      }
       for (const h of msg.body.history || []) {
         const b = h.body || h;
         const text = await LiveCrypto.decrypt(b.iv, b.data);
@@ -570,7 +586,9 @@ async function startLive(nick, roomId, pass) {
   ws.onclose = () => {
     chat.status = "нет связи с реле";
     if (state.activeId === "live") els.convStatus.textContent = chat.status;
+    if (typeof live._relayFail === "function") live._relayFail(new Error("closed"));
   };
+  await joined;
 }
 
 const _sendMessage = sendMessage;

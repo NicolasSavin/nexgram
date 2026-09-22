@@ -133,7 +133,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun injectRelay() {
-        val js = "window.NEXGRAM_RELAY = ${org.json.JSONObject.quote("https://karavanmessage.ru")};"
+        val js = "window.NEXGRAM_RELAY = ${org.json.JSONObject.quote("http://186.246.3.44")};"
         web.evaluateJavascript(js, null)
     }
 

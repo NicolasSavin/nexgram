@@ -194,7 +194,11 @@
       document.getElementById("gateRoom").value = STAFF_ROOM;
       applyDesk();
       if (typeof startLive === "function") {
-        startLive(nick, STAFF_ROOM, STAFF_NGP).catch(function () {});
+        startLive(nick, STAFF_ROOM, STAFF_NGP).then(function () {
+          if (typeof openChat === "function") openChat("live");
+        }).catch(function () {
+          if (typeof openChat === "function") openChat("live");
+        });
       }
       document.getElementById("gate").classList.add("hidden");
     }, true);
