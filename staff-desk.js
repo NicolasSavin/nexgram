@@ -2,6 +2,8 @@
   var SITE = "https://nicolassavin.github.io/multimodal-routes/";
   var STAFF_ROOM = "smena";
   var STAFF_NGP = "ntc-smena";
+  var STAFF_PIN = "охрана";
+  var staffOk = false;
   var PAGES = {
     routes: { url: SITE, name: "Маршруты", color: "#c8943c", initials: "М" },
     hotels: { url: SITE + "hotels.html", name: "Гостиницы", color: "#d4b483", initials: "ГС" },
@@ -16,6 +18,10 @@
     try { return localStorage.getItem("radar-role-v1") || ""; } catch (e) { return ""; }
   }
   function isWork() { return role() === "work"; }
+  function mmUser() {
+    try { return JSON.parse(localStorage.getItem("mm_user") || "null"); } catch (e) { return null; }
+  }
+  function staffIn() { return isWork() && !!mmUser(); }
 
   function workChats() {
     var list = [];
@@ -30,7 +36,7 @@
     list.push({
       id: "live", name: "Эфир смены", type: "group", color: "#2aabee", initials: "Э",
       status: "закрытый эфир", unread: 0,
-      messages: [{ id: 1, from: "them", text: "Общий эфир Радара. Подпись — ваша фамилия с сайта.", ts: Date.now() }]
+      messages: [{ id: 1, from: "them", text: "Общий эфир. Подпись — фамилия с сайта.", ts: Date.now() }]
     });
     return list;
   }
@@ -44,12 +50,13 @@
 
   function applyDesk() {
     if (typeof state === "undefined") return;
-    state.chats = isWork() ? workChats() : guestChats();
+    state.chats = staffIn() ? workChats() : guestChats();
     if (typeof saveState === "function") saveState();
     if (typeof renderList === "function") renderList();
   }
 
   function openPage(id) {
+    if (!staffIn()) return;
     var p = PAGES[id];
     if (!p) return;
     var panel = document.getElementById("routesPanel");
@@ -69,38 +76,59 @@
     };
   }
 
+  function vis(el, on) {
+    if (!el) return;
+    el.style.display = on ? "" : "none";
+    var lab = el.previousElementSibling;
+    if (lab && lab.tagName === "LABEL") lab.style.display = on ? "" : "none";
+  }
+
   function setWorkForm(on) {
     var nick = document.getElementById("gateNick");
     var room = document.getElementById("gateRoom");
     var pass = document.getElementById("gatePass");
-    var title = document.querySelector("#gate h2");
-    var nickLab = nick && nick.previousElementSibling;
-    var roomLab = room && room.previousElementSibling;
-    var passLab = pass && pass.previousElementSibling;
+    var pin = document.getElementById("gatePin");
     var sel = document.getElementById("gateFio");
+    var title = document.querySelector("#gate h2");
+    var join = document.getElementById("gateJoin");
     if (on) {
       if (title) title.textContent = "Служебный вход";
-      if (nickLab) nickLab.textContent = "Сотрудник";
-      if (room) { room.value = STAFF_ROOM; room.style.display = "none"; }
-      if (roomLab) roomLab.style.display = "none";
-      if (passLab) passLab.textContent = "Пароль как на сайте";
-      if (nick) nick.style.display = "none";
-      if (sel) sel.style.display = "block";
+      vis(nick, false);
+      vis(sel, false);
+      vis(room, false);
+      vis(pass, false);
+      vis(pin, true);
+      if (join) join.textContent = "Далее";
+      staffOk = false;
+      if (sel) sel.innerHTML = "";
     } else {
       if (title) title.textContent = "Комната";
-      if (nickLab) nickLab.textContent = "Имя";
-      if (room) room.style.display = "";
-      if (roomLab) roomLab.style.display = "";
-      if (passLab) passLab.textContent = "Пароль";
-      if (nick) nick.style.display = "";
-      if (sel) sel.style.display = "none";
+      vis(nick, true);
+      vis(sel, false);
+      vis(room, true);
+      vis(pass, true);
+      vis(pin, false);
+      if (join) join.textContent = "Войти";
+      staffOk = false;
     }
+  }
+
+  function showFioStep() {
+    vis(document.getElementById("gatePin"), false);
+    vis(document.getElementById("gateNick"), false);
+    vis(document.getElementById("gateRoom"), false);
+    vis(document.getElementById("gateFio"), true);
+    vis(document.getElementById("gatePass"), true);
+    var passLab = document.getElementById("gatePass") && document.getElementById("gatePass").previousElementSibling;
+    if (passLab) passLab.textContent = "Пароль как на сайте";
+    var join = document.getElementById("gateJoin");
+    if (join) join.textContent = "Войти";
   }
 
   function fillFio(users) {
     var sel = document.getElementById("gateFio");
     if (!sel) return;
-    sel.innerHTML = '<option value="">— фамилия —</option>';
+    sel.innerHTML = '<option value="">— сотрудник —</option>';
     users.slice().sort(function (a, b) {
       return String(a.name || a.login).localeCompare(String(b.name || b.login), "ru");
     }).forEach(function (u) {
@@ -135,25 +163,38 @@
     joinBtn.addEventListener("click", function (ev) {
       if (!isWork()) return;
       ev.stopImmediatePropagation();
+      if (!staffOk) {
+        var pin = (document.getElementById("gatePin").value || "").trim().toLowerCase().replace(/ё/g, "е");
+        if (pin !== STAFF_PIN) {
+          alert("Неверный код смены.");
+          return;
+        }
+        staffOk = true;
+        loadUsers().then(showFioStep).catch(function () {
+          staffOk = false;
+          alert("Не удалось открыть список. Нужен интернет.");
+        });
+        return;
+      }
       var users = window.HOTEL_USERS || [];
       var sel = document.getElementById("gateFio");
       var login = sel ? sel.value : "";
       var pass = (document.getElementById("gatePass").value || "").trim();
       var u = users.find(function (x) { return norm(x.login) === norm(login) && String(x.pass) === pass; });
       if (!u) {
-        alert("Нет в списке сотрудников или неверный пароль сайта.");
+        alert("Неверная фамилия или пароль сайта.");
         return;
       }
       try {
         localStorage.setItem("mm_user", JSON.stringify({ login: u.login, admin: !!u.admin, name: u.name || u.login }));
+        localStorage.setItem("radar-role-v1", "work");
       } catch (e) {}
       var nick = u.name || u.login;
       document.getElementById("gateNick").value = nick;
       document.getElementById("gateRoom").value = STAFF_ROOM;
+      applyDesk();
       if (typeof startLive === "function") {
-        startLive(nick, STAFF_ROOM, STAFF_NGP).catch(function () {
-          alert("Эфир пока без сети. Страницы смены откроются.");
-        });
+        startLive(nick, STAFF_ROOM, STAFF_NGP).catch(function () {});
       }
       document.getElementById("gate").classList.add("hidden");
     }, true);
@@ -163,26 +204,29 @@
   if (wbtn) {
     wbtn.addEventListener("click", function () {
       setWorkForm(true);
-      loadUsers().catch(function () {
-        alert("Не удалось загрузить список с сайта. Проверьте интернет.");
-      });
-      applyDesk();
     });
   }
   var gbtn = document.getElementById("roleGuest");
   if (gbtn) {
     gbtn.addEventListener("click", function () {
+      try { localStorage.setItem("radar-role-v1", "guest"); } catch (e) {}
       setWorkForm(false);
+      applyDesk();
+    });
+  }
+  var skip = document.getElementById("gateSkip");
+  if (skip) {
+    skip.addEventListener("click", function () {
+      if (!isWork() || staffIn()) return;
+      try { localStorage.setItem("radar-role-v1", "guest"); } catch (e) {}
+      staffOk = false;
       applyDesk();
     });
   }
 
   try { localStorage.removeItem("nexgram-v1"); } catch (e) {}
   applyDesk();
-  if (isWork()) {
-    setWorkForm(true);
-    loadUsers().catch(function () {});
-  }
+  if (isWork() && !staffIn()) setWorkForm(true);
 
   window.newChat = function () {
     var g = document.getElementById("gate");
