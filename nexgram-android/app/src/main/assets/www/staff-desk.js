@@ -64,7 +64,12 @@
     var title = document.querySelector(".routes-title");
     if (!panel || !frame) return;
     if (title) title.textContent = p.name;
-    frame.src = p.url;
+    var u = mmUser();
+    var url = p.url;
+    if (u && u.login) {
+      url += "#mm=" + encodeURIComponent(JSON.stringify({ login: u.login, name: u.name || u.login, admin: !!u.admin }));
+    }
+    frame.src = url;
     panel.classList.remove("hidden");
   }
 

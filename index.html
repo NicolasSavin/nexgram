@@ -49,6 +49,7 @@
   <nav class="drawer hidden" id="drawer">
     <div class="drawer-profile"><div class="avatar lg" style="background:#6b8afd">R</div><div><div class="drawer-name">Радар</div><div class="drawer-phone">мессенджер</div></div></div>
     <button class="drawer-item" data-action="routes">Маршруты</button>
+    <button class="drawer-item" data-action="rights">Права доступа</button>
     <button class="drawer-item" data-action="guest">Гражданский чат</button>
     <button class="drawer-item" data-action="work">Служебный вход</button>
     <button class="drawer-item" data-action="new">Новая комната</button>
@@ -85,6 +86,13 @@
     </div>
   </div>
   <input id="filePick" type="file" accept="image/*,video/*,audio/*" hidden />
+  <div class="gate hidden" id="rightsPanel">
+    <div class="gate-card">
+      <h2>Права доступа</h2>
+      <p id="rightsBody" style="white-space:pre-wrap;text-align:left"></p>
+      <button type="button" id="rightsClose">Закрыть</button>
+    </div>
+  </div>
   <script src="forge.min.js"></script>
   <script src="ngp.js"></script>
   <script src="crypto-live.js"></script>
@@ -95,5 +103,6 @@
   <script src="ptt.js"></script>
   <script src="media.js"></script>
   <script src="staff-desk.js"></script>
+  <script src="access.js"></script>
 </body>
 </html>

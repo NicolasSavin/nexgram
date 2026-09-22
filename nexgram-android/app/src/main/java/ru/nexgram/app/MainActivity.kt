@@ -35,6 +35,7 @@ class MainActivity : AppCompatActivity() {
         androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, true)
         setContentView(R.layout.activity_main)
         web = findViewById(R.id.web)
+        requestAppPerms()
 
         val assetLoader = WebViewAssetLoader.Builder()
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
@@ -129,6 +130,23 @@ class MainActivity : AppCompatActivity() {
             val ok = res.isNotEmpty() && res[0] == PackageManager.PERMISSION_GRANTED
             pendingMic?.let { if (ok) it.grant(it.resources) else it.deny() }
             pendingMic = null
+        }
+    }
+
+    private fun requestAppPerms() {
+        val want = mutableListOf(Manifest.permission.RECORD_AUDIO)
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            want += Manifest.permission.READ_MEDIA_IMAGES
+            want += Manifest.permission.READ_MEDIA_VIDEO
+            want += Manifest.permission.READ_MEDIA_AUDIO
+        } else {
+            want += Manifest.permission.READ_EXTERNAL_STORAGE
+        }
+        val need = want.filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+        if (need.isNotEmpty()) {
+            ActivityCompat.requestPermissions(this, need.toTypedArray(), 32)
         }
     }
 
