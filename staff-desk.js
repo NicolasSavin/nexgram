@@ -158,15 +158,31 @@
       fillFio(window.HOTEL_USERS);
       return Promise.resolve(window.HOTEL_USERS);
     }
+    var urls = [
+      "users.js",
+      "http://186.246.3.44/users.js",
+      "https://cdn.jsdelivr.net/gh/NicolasSavin/multimodal-routes@main/users.js",
+      SITE + "users.js"
+    ];
     return new Promise(function (resolve, reject) {
-      var s = document.createElement("script");
-      s.src = SITE + "users.js";
-      s.onload = function () {
-        fillFio(window.HOTEL_USERS || []);
-        resolve(window.HOTEL_USERS || []);
-      };
-      s.onerror = function () { reject(new Error("staff list")); };
-      document.head.appendChild(s);
+      var i = 0;
+      function next() {
+        if (i >= urls.length) {
+          reject(new Error("staff list"));
+          return;
+        }
+        var s = document.createElement("script");
+        s.src = urls[i++];
+        s.onload = function () {
+          if (window.HOTEL_USERS && window.HOTEL_USERS.length) {
+            fillFio(window.HOTEL_USERS);
+            resolve(window.HOTEL_USERS);
+          } else next();
+        };
+        s.onerror = next;
+        document.head.appendChild(s);
+      }
+      next();
     });
   }
 

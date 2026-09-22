@@ -9,8 +9,8 @@ android {
         applicationId = "ru.nexgram.app"
         minSdk = 24
         targetSdk = 35
-        versionCode = 21
-        versionName = "0.12.7-radar"
+        versionCode = 22
+        versionName = "0.12.8-radar"
     }
     buildTypes {
         release {
