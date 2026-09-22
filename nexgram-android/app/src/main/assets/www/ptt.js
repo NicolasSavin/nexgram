@@ -14,7 +14,7 @@ const PTT = {
   },
 
   send(t, body) {
-    if (typeof live !== "undefined" && live.enabled && live.ws && live.ws.readyState === 1) {
+    if (typeof live !== "undefined" && live.enabled && live.ws && live.ws.readyState === 1 && live.inRoom) {
       live.ws.send(JSON.stringify(NGP.frame(t, body)));
       return true;
     }

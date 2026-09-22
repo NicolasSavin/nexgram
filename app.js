@@ -694,11 +694,13 @@ async function startLive(nick, roomId, pass) {
   live.nick = nick;
   live.roomId = roomId;
   live.enabled = true;
+  live.inRoom = false;
   const chat = ensureLiveChat(roomId);
   chat.name = (roomId === "smena") ? "Чат работников" : roomId;
   chat.status = "подключение к реле…";
   if (typeof renderList === "function") renderList();
   const commit = await NGP.commit(roomId, pass);
+  live.joinBody = { room: roomId, nick: nick, commit: commit };
   const here = (location.protocol === "http:" || location.protocol === "https:")
     ? ((location.protocol === "https:" ? "wss:" : "ws:") + "//" + location.host)
     : "";
@@ -770,6 +772,13 @@ async function startLive(nick, roomId, pass) {
         if (typeof live._relayFail === "function") live._relayFail(err);
         else alert(err.message);
       }
+      if (msg.body && msg.body.code === "NOT_IN_ROOM" && live.joinBody && !live._rejoining) {
+        live._rejoining = true;
+        chat.status = "повторный вход…";
+        if (isLiveId(state.activeId)) els.convStatus.textContent = chat.status;
+        ws.send(JSON.stringify(NGP.frame("JOIN", live.joinBody)));
+        setTimeout(function () { live._rejoining = false; }, 4000);
+      }
       return;
     }
     if (msg.t === "WELCOME") {
@@ -777,6 +786,8 @@ async function startLive(nick, roomId, pass) {
       return;
     }
     if (msg.t === "JOINED") {
+      live.inRoom = true;
+      live._rejoining = false;
       chat.status = "NGP/1 · " + (msg.body.peers || 1);
       if (window.RadarLive) {
         RadarLive.setOnline(msg.body.names || []);
@@ -850,6 +861,15 @@ sendMessage = function (text) {
     const chat = ensureLiveChat(live.roomId);
     const trimmed = text.trim();
     if (!trimmed) return;
+    if (!live.inRoom && live.joinBody) {
+      live.ws.send(JSON.stringify(NGP.frame("JOIN", live.joinBody)));
+      chat.status = "вход в эфир…";
+      if (els.convStatus) els.convStatus.textContent = chat.status;
+      setTimeout(function () {
+        if (live.inRoom) sendMessage(trimmed);
+      }, 800);
+      return;
+    }
     LiveCrypto.encrypt(trimmed).then((packet) => {
       live.ws.send(JSON.stringify(NGP.frame("CIPHER", { room: live.roomId, nick: live.nick, ...packet })));
       chat.messages.push({ id: Date.now(), from: "me", text: trimmed, ts: Date.now() });

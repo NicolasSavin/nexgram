@@ -235,7 +235,6 @@
           if (typeof openChat === "function") openChat(typeof ensureLiveChat === "function" ? ensureLiveChat(STAFF_ROOM).id : "live");
         }).catch(function (e) {
           alert("Эфир без реле: " + ((e && e.message) || e));
-          if (typeof openChat === "function") openChat(typeof ensureLiveChat === "function" ? ensureLiveChat(STAFF_ROOM).id : "live");
         });
       }
       document.getElementById("gate").classList.add("hidden");
