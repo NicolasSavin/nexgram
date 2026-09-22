@@ -20,6 +20,7 @@
 
   function roomChats() {
     return loadRooms().filter(function (r) {
+      if (r.room === "smena") return false;
       if (roleGuest() && r.room === "smena") return false;
       return true;
     }).map(function (r) {
@@ -101,6 +102,10 @@
     openChat = function (id) {
       if (String(id).indexOf("hist:") === 0) {
         var room = String(id).slice(5);
+        if (room === "smena") {
+          prev("room:smena");
+          return;
+        }
         var rec = loadRooms().filter(function (x) { return x.room === room; })[0];
         var g = document.getElementById("gate");
         if (g) g.classList.remove("hidden");

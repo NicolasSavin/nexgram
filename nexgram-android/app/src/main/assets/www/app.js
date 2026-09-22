@@ -172,11 +172,26 @@ function mergeDesk(fresh) {
     const prev = old[c.id];
     if (prev && prev.messages && prev.messages.length) c.messages = prev.messages;
     if (prev && prev.unread) c.unread = prev.unread;
-    if (prev && prev.status && c.id === "live") c.status = prev.status;
+    if (prev && prev.status && c.id === "room:smena") c.status = prev.status;
   });
+  var work = false;
+  try { work = localStorage.getItem("radar-role-v1") === "work"; } catch (e) {}
+  var workers = (fresh || []).find(function (c) { return c.id === "room:smena"; });
+  function absorb(id) {
+    var src = old[id];
+    if (!src || !workers || !src.messages) return;
+    (src.messages || []).forEach(function (m) {
+      if (!workers.messages.some(function (x) { return x.id === m.id && x.ts === m.ts; })) workers.messages.push(m);
+    });
+  }
   Object.keys(old).forEach((id) => {
     if (fresh.some((c) => c.id === id)) return;
-    if (id.indexOf("room:") === 0 || id.indexOf("hist:") === 0 || id === "saved" || id === "live") fresh.push(old[id]);
+    if (id === "live" || id === "hist:smena" || id === "smena" || (id === "room:smena" && workers)) {
+      if (work) absorb(id);
+      return;
+    }
+    if (work && (id === "live")) return;
+    if (id.indexOf("room:") === 0 || id.indexOf("hist:") === 0 || id === "saved") fresh.push(old[id]);
   });
   state.chats = fresh;
   saveState();
@@ -674,10 +689,10 @@ function ensureLiveChat(roomId) {
   if (!chat) {
     chat = {
       id: id,
-      name: roomId ? ("🔒 " + roomId) : "Защищённая комната",
+      name: roomId === "smena" ? "Чат работников" : (roomId ? roomId : "Чат"),
       type: "group",
       color: "#2aabee",
-      initials: "🔒",
+      initials: roomId === "smena" ? "ЧР" : "Ч",
       status: "комната",
       unread: 0,
       room: roomId || "",
