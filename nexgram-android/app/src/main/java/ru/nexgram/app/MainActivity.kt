@@ -107,15 +107,6 @@ class MainActivity : AppCompatActivity() {
             override fun onPageFinished(view: WebView, url: String) {
                 injectRelay()
             }
-            override fun onReceivedError(
-                view: WebView,
-                request: WebResourceRequest,
-                error: android.webkit.WebResourceError
-            ) {
-                if (request.isForMainFrame) {
-                    view.loadUrl("https://appassets.androidplatform.net/assets/www/index.html")
-                }
-            }
         }
 
         web.loadUrl("http://186.246.3.44/")
