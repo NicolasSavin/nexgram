@@ -117,7 +117,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        web.loadUrl("http://186.246.3.44/")
+        web.loadUrl("https://appassets.androidplatform.net/assets/www/index.html")
         checkUpdate()
     }
 
