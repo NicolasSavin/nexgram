@@ -17,14 +17,15 @@
       { id: "saved", name: "Избранное", type: "saved", color: "#6b8afd", initials: "★", status: "", unread: 0, messages: [] }
     ];
   }
-  try { localStorage.removeItem("nexgram-v1"); } catch (e) {}
+  try { /* keep history */ } catch (e) {}
   function applyDesk() {
+    if (typeof mergeDesk === "function") return;
     if (typeof state === "undefined" || !Array.isArray(state.chats)) return;
     state.chats = desk();
     if (typeof saveState === "function") saveState();
     if (typeof renderList === "function") renderList();
   }
-  applyDesk();
+  if (typeof mergeDesk !== "function") applyDesk();
 
   function helperAnswer(t) {
     t = String(t || "").toLowerCase();

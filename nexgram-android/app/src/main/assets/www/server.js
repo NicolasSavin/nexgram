@@ -25,6 +25,18 @@ const MIME = {
 const rooms = new Map();
 const commits = new Map();
 const recent = new Map();
+const HIST_FILE = path.join(ROOT, "room-history.json");
+try {
+  const dumped = JSON.parse(fs.readFileSync(HIST_FILE, "utf8"));
+  Object.keys(dumped).forEach((k) => recent.set(k, dumped[k]));
+} catch (e) {}
+function saveHist() {
+  try {
+    const o = {};
+    recent.forEach((v, k) => { o[k] = (v || []).slice(-200); });
+    fs.writeFileSync(HIST_FILE, JSON.stringify(o));
+  } catch (e) {}
+}
 
 function frame(t, body, id) {
   return JSON.stringify({
@@ -193,7 +205,8 @@ wss.on("connection", (ws) => {
       const stored = { t: "CIPHER", ts: Date.now(), body: packet };
       const list = recent.get(ws.roomId) || [];
       list.push(stored);
-      recent.set(ws.roomId, list.slice(-50));
+      recent.set(ws.roomId, list.slice(-200));
+      saveHist();
       broadcast(ws.roomId, "CIPHER", packet, null);
       send(ws, "ACK", { of: msg.id });
       return;

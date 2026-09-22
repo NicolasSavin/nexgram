@@ -115,7 +115,7 @@
         return;
       }
       prev(id);
-      if (id === "live") {
+      if (isLiveId ? isLiveId(id) : (id === "live" || String(id).indexOf("room:") === 0)) {
         var panel = document.getElementById("onlinePanel");
         if (panel) panel.classList.remove("hidden");
       } else {

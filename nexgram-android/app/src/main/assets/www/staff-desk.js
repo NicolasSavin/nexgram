@@ -50,9 +50,13 @@
 
   function applyDesk() {
     if (typeof state === "undefined") return;
-    state.chats = staffIn() ? workChats() : guestChats();
-    if (typeof saveState === "function") saveState();
-    if (typeof renderList === "function") renderList();
+    var next = staffIn() ? workChats() : guestChats();
+    if (typeof mergeDesk === "function") mergeDesk(next);
+    else {
+      state.chats = next;
+      if (typeof saveState === "function") saveState();
+      if (typeof renderList === "function") renderList();
+    }
   }
 
   function openPage(id) {
@@ -200,9 +204,9 @@
       applyDesk();
       if (typeof startLive === "function") {
         startLive(nick, STAFF_ROOM, STAFF_NGP).then(function () {
-          if (typeof openChat === "function") openChat("live");
+          if (typeof openChat === "function") openChat(typeof ensureLiveChat === "function" ? ensureLiveChat(STAFF_ROOM).id : "live");
         }).catch(function () {
-          if (typeof openChat === "function") openChat("live");
+          if (typeof openChat === "function") openChat(typeof ensureLiveChat === "function" ? ensureLiveChat(STAFF_ROOM).id : "live");
         });
       }
       document.getElementById("gate").classList.add("hidden");
@@ -233,7 +237,7 @@
     });
   }
 
-  try { localStorage.removeItem("nexgram-v1"); } catch (e) {}
+  try { /* keep chat history */ } catch (e) {}
   applyDesk();
   if (isWork() && !staffIn()) setWorkForm(true);
 

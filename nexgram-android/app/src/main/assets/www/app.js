@@ -148,8 +148,38 @@ function loadState() {
   return { chats: structuredClone(DEFAULT_CHATS), theme: "dark", activeId: null };
 }
 function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ chats: state.chats, theme: state.theme, activeId: state.activeId }));
+  try {
+    const slim = (state.chats || []).map((c) => ({
+      ...c,
+      messages: (c.messages || []).slice(-300).map((m) => {
+        const copy = { ...m };
+        if (copy.image && String(copy.image).indexOf("blob:") === 0) copy.image = undefined;
+        if (copy.video && String(copy.video).indexOf("blob:") === 0) copy.video = undefined;
+        return copy;
+      })
+    }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ chats: slim, theme: state.theme, activeId: state.activeId }));
+  } catch (e) {}
 }
+
+function mergeDesk(fresh) {
+  const old = {};
+  (state.chats || []).forEach((c) => { old[c.id] = c; });
+  (fresh || []).forEach((c) => {
+    const prev = old[c.id];
+    if (prev && prev.messages && prev.messages.length) c.messages = prev.messages;
+    if (prev && prev.unread) c.unread = prev.unread;
+    if (prev && prev.status && c.id === "live") c.status = prev.status;
+  });
+  Object.keys(old).forEach((id) => {
+    if (fresh.some((c) => c.id === id)) return;
+    if (id.indexOf("room:") === 0 || id.indexOf("hist:") === 0 || id === "saved" || id === "live") fresh.push(old[id]);
+  });
+  state.chats = fresh;
+  saveState();
+  if (typeof renderList === "function") renderList();
+}
+window.mergeDesk = mergeDesk;
 
 const state = loadState();
 if (!state.chats.some((c) => c.id === "routes")) {
@@ -249,7 +279,7 @@ function openChat(id) {
   renderList(els.search.value);
   els.input.focus();
   var ptt = document.querySelector(".ptt-wrap");
-  if (ptt) ptt.style.display = id === "live" ? "" : "none";
+  if (ptt) ptt.style.display = isLiveId(id) ? "" : "none";
 }
 
 function renderMessages(chat) {
@@ -480,21 +510,29 @@ if (state.activeId && state.chats.some((c) => c.id === state.activeId)) {
 
 const live = { ws: null, roomId: null, nick: null, enabled: false };
 
-function ensureLiveChat() {
-  let chat = state.chats.find((c) => c.id === "live");
+function isLiveId(id) {
+  return id === "live" || String(id || "").indexOf("room:") === 0;
+}
+
+function ensureLiveChat(roomId) {
+  roomId = roomId || (typeof live !== "undefined" && live.roomId) || "";
+  const id = roomId ? ("room:" + roomId) : "live";
+  let chat = state.chats.find((c) => c.id === id) || state.chats.find((c) => c.id === "live" && (!roomId || c.room === roomId));
   if (!chat) {
     chat = {
-      id: "live",
-      name: "Защищённая комната",
+      id: id,
+      name: roomId ? ("🔒 " + roomId) : "Защищённая комната",
       type: "group",
       color: "#2aabee",
       initials: "🔒",
-      status: "E2E AES-256-GCM",
+      status: "комната",
       unread: 0,
+      room: roomId || "",
       messages: []
     };
     state.chats.unshift(chat);
   }
+  chat.room = roomId || chat.room || "";
   return chat;
 }
 
@@ -515,7 +553,7 @@ async function startLive(nick, roomId, pass) {
   }
   const ws = new WebSocket(wsUrl);
   live.ws = ws;
-  const chat = ensureLiveChat();
+  const chat = ensureLiveChat(roomId);
   chat.name = "🔒 " + roomId;
   const commit = await NGP.commit(roomId, pass);
   const joined = new Promise((resolve, reject) => {
@@ -534,7 +572,7 @@ async function startLive(nick, roomId, pass) {
     if (msg.t === "ERROR") {
       if (typeof PTT !== "undefined") PTT.handle(msg);
       chat.status = "ошибка NGP: " + (msg.body && msg.body.code);
-      if (state.activeId === "live") els.convStatus.textContent = chat.status;
+      if (isLiveId(state.activeId)) els.convStatus.textContent = chat.status;
       if (msg.body && msg.body.code === "BAD_COMMIT") alert("Неверный пароль комнаты (NGP BAD_COMMIT).");
       return;
     }
@@ -553,28 +591,31 @@ async function startLive(nick, roomId, pass) {
         live._relayOk = null;
         live._relayFail = null;
       }
+      const seen = new Set((chat.messages || []).map((m) => String(m.ts) + ":" + (m.author || "")));
       for (const h of msg.body.history || []) {
         const b = h.body || h;
         const text = await LiveCrypto.decrypt(b.iv, b.data);
-        if (text) {
-          chat.messages.push({
-            id: h.ts || Date.now(),
-            from: b.nick === live.nick ? "me" : "them",
-            author: b.nick,
-            text,
-            ts: h.ts || Date.now()
-          });
-        }
+        if (!text) continue;
+        const key = String(h.ts || "") + ":" + (b.nick || "");
+        if (seen.has(key)) continue;
+        seen.add(key);
+        chat.messages.push({
+          id: h.ts || Date.now(),
+          from: b.nick === live.nick ? "me" : "them",
+          author: b.nick,
+          text,
+          ts: h.ts || Date.now()
+        });
       }
       saveState();
-      openChat("live");
+      openChat(chat.id);
       return;
     }
     if (msg.t === "PEERS") {
       if (window.RadarLive) RadarLive.setOnline(msg.body.names || []);
       else {
         chat.status = "NGP/1 · " + msg.body.count;
-        if (state.activeId === "live") els.convStatus.textContent = chat.status;
+        if (isLiveId(state.activeId)) els.convStatus.textContent = chat.status;
       }
       return;
     }
@@ -593,15 +634,15 @@ async function startLive(nick, roomId, pass) {
         ts: msg.ts
       });
       if (b.nick !== live.nick && window.RadarLive) RadarLive.notify(b.nick || "Радар", text.slice(0, 80));
-      if (state.activeId !== "live") chat.unread = (chat.unread || 0) + 1;
+      if (!isLiveId(state.activeId)) chat.unread = (chat.unread || 0) + 1;
       saveState();
-      if (state.activeId === "live") renderMessages(chat);
+      if (isLiveId(state.activeId)) renderMessages(chat);
       renderList(els.search.value);
     }
   };
   ws.onclose = () => {
     chat.status = "нет связи с реле";
-    if (state.activeId === "live") els.convStatus.textContent = chat.status;
+    if (isLiveId(state.activeId)) els.convStatus.textContent = chat.status;
     if (typeof live._relayFail === "function") live._relayFail(new Error("closed"));
   };
   await joined;
@@ -609,8 +650,8 @@ async function startLive(nick, roomId, pass) {
 
 const _sendMessage = sendMessage;
 sendMessage = function (text) {
-  if (live.enabled && state.activeId === "live" && live.ws && live.ws.readyState === 1) {
-    const chat = ensureLiveChat();
+  if (live.enabled && isLiveId(state.activeId) && live.ws && live.ws.readyState === 1) {
+    const chat = ensureLiveChat(live.roomId);
     const trimmed = text.trim();
     if (!trimmed) return;
     LiveCrypto.encrypt(trimmed).then((packet) => {
