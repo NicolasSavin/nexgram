@@ -84,7 +84,7 @@ class MainActivity : AppCompatActivity() {
     private fun checkUpdate() {
         val current = try {
             packageManager.getPackageInfo(packageName, 0).versionCode
-        } catch (_: Exception) { 6 }
+        } catch (_: Exception) { 7 }
         thread {
             try {
                 val raw = URL("https://nicolassavin.github.io/nexgram/version.json").readText()
@@ -114,7 +114,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun injectRelay() {
-        val js = "window.NEXGRAM_RELAY = ${org.json.JSONObject.quote("http://186.246.3.44")};"
+        val js = "window.NEXGRAM_RELAY = ${org.json.JSONObject.quote("https://karavanmessage.ru")};"
         web.evaluateJavascript(js, null)
     }
 
