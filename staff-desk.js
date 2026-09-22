@@ -9,7 +9,6 @@
     hotels: { url: SITE + "hotels.html", name: "Гостиницы", color: "#d4b483", initials: "ГС" },
     where: { url: SITE + "where.html", name: "Кто где", color: "#faa774", initials: "КГ" },
     teamchat: { url: SITE + "team.html", name: "Чат работников", color: "#2aabee", initials: "ЧР" },
-    radio: { url: SITE + "radio.html", name: "Рация сайта", color: "#ee7aae", initials: "РЦ" },
     naryad: { url: SITE + "naryad.html", name: "Наряд", color: "#a695e7", initials: "НР" },
     helper: { url: SITE + "chat.html", name: "Помощник смены", color: "#7bc862", initials: "ИИ" }
   };
@@ -36,12 +35,12 @@
     list.push({
       id: "guide", name: "Инструкция", type: "channel", color: "#6ec9cb", initials: "?",
       status: "памятка", unread: 0,
-      messages: [{ id: 1, from: "them", text: "РАДАР — памятка\n\n1. Служебный вход (не «Я пользователь»).\n2. Код смены: охрана — посторонним не говорить.\n3. Фамилия из списка, пароль как на сайте (дата рождения, 8 цифр).\n4. Маршруты, гостиницы, кто где, чат работников, рация, наряд, помощник — те же страницы, что на сайте.\n5. Эфир смены — закрытый чат и рация Радара. Кнопка с динамиком: зажать и говорить.\n6. Скрепка — фото/видео в эфир. Уходит шифром, сервер кашу не читает. Видят только кто вошёл в ту же смену. Гости этого не видят. Скриншот с экрана — уже не секрет.\n7. Посторонним только «Я пользователь». Список фамилий им не показывают.", ts: Date.now() }]
+      messages: [{ id: 1, from: "them", text: "РАДАР — памятка\n\n1. Служебный вход (не «Я пользователь»).\n2. Код смены: охрана — посторонним не говорить.\n3. Фамилия из списка, пароль как на сайте (дата рождения, 8 цифр).\n4. Маршруты, гостиницы, кто где, чат работников, наряд, помощник — страницы с сайта.\n5. Рация только одна: пункт «Рация» слева. Красная PTT. «Рация сайта» в приложении микрофон не получает — её убрали.\n6. Скрепка — фото/видео в эфир. Уходит шифром, сервер кашу не читает. Видят только кто вошёл в ту же смену. Гости этого не видят. Скриншот с экрана — уже не секрет.\n7. Посторонним только «Я пользователь». Список фамилий им не показывают.", ts: Date.now() }]
     });
     list.push({
-      id: "room:smena", name: "Эфир смены", type: "group", color: "#2aabee", initials: "Э",
-      status: "закрытый эфир", unread: 0, room: "smena",
-      messages: [{ id: 1, from: "them", text: "Общий эфир. Подпись — фамилия с сайта.", ts: Date.now() }]
+      id: "room:smena", name: "Рация", type: "group", color: "#ee7aae", initials: "Р",
+      status: "один эфир смены", unread: 0, room: "smena",
+      messages: [{ id: 1, from: "them", text: "Единственная рация. Зажмите красную кнопку и говорите. Подпись — ваша фамилия.", ts: Date.now() }]
     });
     return list;
   }
@@ -78,6 +77,7 @@
     if (u && u.login) {
       url += "#mm=" + encodeURIComponent(JSON.stringify({ login: u.login, name: u.name || u.login, admin: !!u.admin }));
     }
+    frame.setAttribute("allow", "microphone; camera");
     frame.src = url;
     panel.classList.remove("hidden");
   }
@@ -85,6 +85,10 @@
   if (typeof openChat === "function") {
     var prevOpen = openChat;
     openChat = function (id) {
+      if (id === "radio" || id === "room:smena") {
+        prevOpen("room:smena");
+        return;
+      }
       if (PAGES[id]) { openPage(id); return; }
       prevOpen(id);
     };
