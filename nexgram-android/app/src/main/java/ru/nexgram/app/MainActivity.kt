@@ -78,22 +78,20 @@ class MainActivity : AppCompatActivity() {
 
         web.webChromeClient = object : WebChromeClient() {
             override fun onPermissionRequest(request: PermissionRequest) {
-                val needsMic = request.resources.contains(PermissionRequest.RESOURCE_AUDIO_CAPTURE)
-                if (!needsMic) {
-                    request.grant(request.resources)
-                    return
-                }
-                if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.RECORD_AUDIO)
-                    == PackageManager.PERMISSION_GRANTED
-                ) {
+                val need = mutableListOf<String>()
+                if (request.resources.contains(PermissionRequest.RESOURCE_AUDIO_CAPTURE) &&
+                    ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.RECORD_AUDIO)
+                    != PackageManager.PERMISSION_GRANTED
+                ) need += Manifest.permission.RECORD_AUDIO
+                if (request.resources.contains(PermissionRequest.RESOURCE_VIDEO_CAPTURE) &&
+                    ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.CAMERA)
+                    != PackageManager.PERMISSION_GRANTED
+                ) need += Manifest.permission.CAMERA
+                if (need.isEmpty()) {
                     request.grant(request.resources)
                 } else {
                     pendingMic = request
-                    ActivityCompat.requestPermissions(
-                        this@MainActivity,
-                        arrayOf(Manifest.permission.RECORD_AUDIO),
-                        31
-                    )
+                    ActivityCompat.requestPermissions(this@MainActivity, need.toTypedArray(), 31)
                 }
             }
             override fun onShowFileChooser(
@@ -161,7 +159,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun requestAppPerms() {
-        val want = mutableListOf(Manifest.permission.RECORD_AUDIO)
+        val want = mutableListOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.CAMERA)
         if (android.os.Build.VERSION.SDK_INT >= 33) {
             want += Manifest.permission.READ_MEDIA_IMAGES
             want += Manifest.permission.READ_MEDIA_VIDEO

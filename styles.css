@@ -475,7 +475,24 @@ body {
   user-select: none;
   touch-action: none;
 }
-.ptt-btn .ptt-mic { font-size: 26px; line-height: 1; }
+.ptt-row { display: flex; gap: 18px; align-items: center; justify-content: center; }
+.ptt-btn.ptt-vid {
+  background: radial-gradient(circle at 30% 30%, #c9a227, #8a7014 55%, #5c4a0c);
+  box-shadow: 0 8px 20px rgba(201, 162, 39, .35);
+  font-size: 13px;
+  font-weight: 700;
+}
+.ptt-btn.ptt-vid.hot {
+  background: radial-gradient(circle at 30% 30%, #ffd54f, #f9a825 60%, #ef6c00);
+}
+.ptt-preview {
+  width: min(72vw, 280px);
+  max-height: 180px;
+  border-radius: 12px;
+  background: #000;
+  object-fit: cover;
+}
+.ptt-preview.hidden { display: none; }
 .ptt-btn .ptt-label { font-size: 11px; font-weight: 700; letter-spacing: .08em; }
 .ptt-btn:active, .ptt-btn.hot {
   transform: scale(1.04);

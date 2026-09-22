@@ -47,7 +47,12 @@
         <div class="emoji-panel hidden" id="emojiPanel"></div>
         <div class="ptt-wrap">
           <div class="ptt-status" id="pttStatus">Рация</div>
-          <button type="button" class="ptt-btn" id="pttBtn">PTT</button>
+          <video id="pttPreview" class="ptt-preview hidden" playsinline muted autoplay></video>
+          <video id="pttRemote" class="ptt-preview hidden" playsinline autoplay></video>
+          <div class="ptt-row">
+            <button type="button" class="ptt-btn" id="pttBtn">PTT</button>
+            <button type="button" class="ptt-btn ptt-vid" id="pttVidBtn">Видео</button>
+          </div>
         </div>
       </section>
     </main>
