@@ -452,6 +452,12 @@ els.input.addEventListener("keydown", (e) => {
     els.composer.requestSubmit();
   }
 });
+function pttKb(hide) {
+  var w = document.querySelector(".ptt-wrap");
+  if (w) w.style.display = hide ? "none" : (isLiveId(state.activeId) ? "" : "none");
+}
+els.input.addEventListener("focus", () => pttKb(true));
+els.input.addEventListener("blur", () => setTimeout(() => pttKb(false), 200));
 els.menuBtn.addEventListener("click", () => openDrawer(true));
 els.backdrop.addEventListener("click", () => openDrawer(false));
 els.backBtn.addEventListener("click", () => {
@@ -519,12 +525,41 @@ function radarSocket(wsUrl) {
       readyState: 0,
       send: function (s) { RadarNative.wsSend(String(s)); },
       close: function () { RadarNative.wsClose(); },
-      onopen: null, onmessage: null, onerror: null, onclose: null
+      _onopen: null,
+      _onmessage: null,
+      _onerror: null,
+      _onclose: null
     };
-    window.__radarWsOnOpen = function () { fake.readyState = 1; if (fake.onopen) fake.onopen(); };
-    window.__radarWsOnMessage = function (data) { if (fake.onmessage) fake.onmessage({ data: data }); };
-    window.__radarWsOnError = function (m) { if (fake.onerror) fake.onerror(new Error(m || "ws")); };
-    window.__radarWsOnClose = function () { fake.readyState = 3; if (fake.onclose) fake.onclose(); };
+    Object.defineProperty(fake, "onopen", {
+      set: function (fn) { fake._onopen = fn; if (fake.readyState === 1 && fn) fn(); },
+      get: function () { return fake._onopen; }
+    });
+    Object.defineProperty(fake, "onmessage", {
+      set: function (fn) { fake._onmessage = fn; },
+      get: function () { return fake._onmessage; }
+    });
+    Object.defineProperty(fake, "onerror", {
+      set: function (fn) { fake._onerror = fn; },
+      get: function () { return fake._onerror; }
+    });
+    Object.defineProperty(fake, "onclose", {
+      set: function (fn) { fake._onclose = fn; },
+      get: function () { return fake._onclose; }
+    });
+    window.__radarWsOnOpen = function () {
+      fake.readyState = 1;
+      if (fake._onopen) fake._onopen();
+    };
+    window.__radarWsOnMessage = function (data) {
+      if (fake._onmessage) fake._onmessage({ data: data });
+    };
+    window.__radarWsOnError = function (m) {
+      if (fake._onerror) fake._onerror(new Error(m || "ws"));
+    };
+    window.__radarWsOnClose = function () {
+      fake.readyState = 3;
+      if (fake._onclose) fake._onclose();
+    };
     RadarNative.wsOpen(wsUrl);
     return fake;
   }
@@ -564,6 +599,11 @@ async function startLive(nick, roomId, pass) {
   live.nick = nick;
   live.roomId = roomId;
   live.enabled = true;
+  const chat = ensureLiveChat(roomId);
+  chat.name = "🔒 " + roomId;
+  chat.status = "подключение к реле…";
+  if (typeof renderList === "function") renderList();
+  const commit = await NGP.commit(roomId, pass);
   const here = (location.protocol === "http:" || location.protocol === "https:")
     ? ((location.protocol === "https:" ? "wss:" : "ws:") + "//" + location.host)
     : "";
@@ -577,14 +617,10 @@ async function startLive(nick, roomId, pass) {
   } else if (relay) {
     wsUrl = relay.replace(/^http/, "ws") + (relay.includes("/ws") ? "" : "/ws");
   } else {
-    alert("Укажите адрес реле NGP.");
-    return;
+    throw new Error("Нет адреса реле");
   }
   const ws = radarSocket(wsUrl);
   live.ws = ws;
-  const chat = ensureLiveChat(roomId);
-  chat.name = "🔒 " + roomId;
-  const commit = await NGP.commit(roomId, pass);
   const joined = new Promise((resolve, reject) => {
     const t = setTimeout(() => {
       try { ws.close(); } catch (e) {}

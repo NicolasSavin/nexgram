@@ -210,7 +210,8 @@
       if (typeof startLive === "function") {
         startLive(nick, STAFF_ROOM, STAFF_NGP).then(function () {
           if (typeof openChat === "function") openChat(typeof ensureLiveChat === "function" ? ensureLiveChat(STAFF_ROOM).id : "live");
-        }).catch(function () {
+        }).catch(function (e) {
+          alert("Эфир без реле: " + ((e && e.message) || e));
           if (typeof openChat === "function") openChat(typeof ensureLiveChat === "function" ? ensureLiveChat(STAFF_ROOM).id : "live");
         });
       }

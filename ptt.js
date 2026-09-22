@@ -36,7 +36,23 @@ const PTT = {
     this.talking = true;
     btn && btn.classList.add("hot");
     const online = this.send("PTT_START", { room: live.roomId, nick: live.nick });
-    this.status(online ? "Эфир… говорите" : "Запись только у вас (нет реле)", "live");
+    if (!online) {
+      this.status("Нет реле — подключаю…", "live");
+      if (typeof startLive === "function" && live.nick && live.roomId) {
+        try {
+          var g = (typeof loadGate === "function" && loadGate()) || {};
+          await startLive(live.nick, live.roomId, g.pass || "ntc-smena");
+          this.send("PTT_START", { room: live.roomId, nick: live.nick });
+          this.status("Эфир… говорите", "live");
+        } catch (e) {
+          this.status("Нет реле. Сеть или сервер.", "live");
+        }
+      } else {
+        this.status("Нет реле. Сначала войдите в комнату.", "live");
+      }
+    } else {
+      this.status("Эфир… говорите", "live");
+    }
 
     this.rec = new MediaRecorder(this.stream, this.mime ? { mimeType: this.mime, audioBitsPerSecond: 24000 } : { audioBitsPerSecond: 24000 });
     this.rec.ondataavailable = async (ev) => {
