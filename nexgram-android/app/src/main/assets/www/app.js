@@ -541,14 +541,17 @@ async function startLive(nick, roomId, pass) {
   live.nick = nick;
   live.roomId = roomId;
   live.enabled = true;
+  const here = (location.protocol === "http:" || location.protocol === "https:")
+    ? ((location.protocol === "https:" ? "wss:" : "ws:") + "//" + location.host)
+    : "";
   const relay = (window.NEXGRAM_RELAY || "").replace(/\/$/, "");
   let wsUrl;
-  if (relay) {
+  if (here && location.hostname !== "appassets.androidplatform.net") {
+    wsUrl = here + "/ws";
+  } else if (relay) {
     wsUrl = relay.replace(/^http/, "ws") + (relay.includes("/ws") ? "" : "/ws");
-  } else if (location.protocol === "http:" || location.protocol === "https:") {
-    wsUrl = (location.protocol === "https:" ? "wss:" : "ws:") + "//" + location.host + "/ws";
   } else {
-    alert("Укажите адрес реле NGP (в приложении: меню → сервер). Без него доступно только локальное демо.");
+    alert("Укажите адрес реле NGP.");
     return;
   }
   const ws = new WebSocket(wsUrl);
