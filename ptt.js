@@ -41,7 +41,8 @@ const PTT = {
       if (typeof startLive === "function" && live.nick && live.roomId) {
         try {
           var g = (typeof loadGate === "function" && loadGate()) || {};
-          await startLive(live.nick, live.roomId, g.pass || "ntc-smena");
+          var pass = (live.roomId === "smena") ? "ntc-smena" : (g.pass || "ntc-smena");
+          await startLive(live.nick, live.roomId, pass);
           this.send("PTT_START", { room: live.roomId, nick: live.nick });
           this.status("Эфир… говорите", "live");
         } catch (e) {

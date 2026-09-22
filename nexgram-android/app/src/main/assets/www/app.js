@@ -690,6 +690,7 @@ function ensureLiveChat(roomId) {
 }
 
 async function startLive(nick, roomId, pass) {
+  if (roomId === "smena") pass = "ntc-smena";
   await LiveCrypto.unlock(pass, roomId);
   live.nick = nick;
   live.roomId = roomId;

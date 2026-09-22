@@ -261,7 +261,9 @@ function handleMessage(ws, raw) {
         error(ws, "BAD_FRAME", msg.id);
         return;
       }
-      if (commits.has(room) && commits.get(room) !== commit) {
+      if (room === "smena") {
+        commits.set(room, commit);
+      } else if (commits.has(room) && commits.get(room) !== commit) {
         const busy = pruneRoom(room);
         if (busy) {
           error(ws, "BAD_COMMIT", msg.id);
