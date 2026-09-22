@@ -19,7 +19,7 @@
     <main class="chat-pane" id="chatPane">
       <div class="empty-state" id="emptyState">
         <h1>Радар</h1>
-        <p id="emptyHint">Смена, эфир, маршруты.</p>
+        <p id="emptyHint">Закрытые чаты и эфир.</p>
       </div>
       <section class="conversation hidden" id="conversation">
         <header class="conv-header">
@@ -68,9 +68,13 @@
   <div class="gate hidden" id="gate">
     <div class="gate-card">
       <h2>Комната</h2>
-      <label>Имя</label><input id="gateNick" maxlength="32" />
-      <label>Код</label><input id="gateRoom" maxlength="64" placeholder="friends или smena" />
-      <label>Пароль</label><input id="gatePass" type="password" maxlength="128" />
+      <label>Имя</label>
+      <input id="gateNick" maxlength="32" />
+      <select id="gateFio" style="display:none;width:100%;background:var(--bg);border:1px solid transparent;border-radius:10px;color:var(--text);padding:10px 12px;font:inherit"></select>
+      <label>Код</label>
+      <input id="gateRoom" maxlength="64" placeholder="friends или smena" />
+      <label>Пароль</label>
+      <input id="gatePass" type="password" maxlength="128" />
       <button type="button" id="gateJoin">Войти</button>
       <button type="button" class="ghost" id="gateSaved">Быстрый вход</button>
       <button type="button" class="ghost" id="gateSkip">Позже</button>
@@ -84,5 +88,6 @@
   <script src="role-boot.js"></script>
   <script src="gate-save.js"></script>
   <script src="ptt.js"></script>
+  <script src="staff-desk.js"></script>
 </body>
 </html>
