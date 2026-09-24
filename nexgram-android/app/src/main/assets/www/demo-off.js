@@ -67,6 +67,7 @@
       if (location.hostname && location.hostname !== "appassets.androidplatform.net") {
         relays.push(location.protocol + "//" + location.host);
       }
+      relays.push("https://photography-word-essence-knowledge.trycloudflare.com");
       relays.push("http://186.246.3.44");
       relays.push("https://karavanmessage.ru");
       if (window.NEXGRAM_RELAY) relays.push(window.NEXGRAM_RELAY.replace(/\/$/, ""));
