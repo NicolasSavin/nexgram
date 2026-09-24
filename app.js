@@ -874,6 +874,20 @@ async function startLive(nick, roomId, pass) {
       }
       return;
     }
+    if (msg.t === "CLEAR_MINE") {
+      const nick = msg.body && msg.body.nick;
+      if (nick) {
+        chat.messages = (chat.messages || []).filter(function (m) {
+          if (m.author && m.author === nick) return false;
+          if (nick === live.nick && m.from === "me") return false;
+          return true;
+        });
+        saveState();
+        if (isLiveId(state.activeId)) renderMessages(chat);
+        renderList(els.search.value);
+      }
+      return;
+    }
     if (typeof PTT !== "undefined") PTT.handle(msg);
     if (typeof RadarMedia !== "undefined" && RadarMedia.handle(msg)) return;
     if (msg.t === "CIPHER") {
@@ -960,6 +974,24 @@ document.getElementById("gateJoin").addEventListener("click", async () => {
 });
 document.getElementById("gateSkip").addEventListener("click", () => {
   document.getElementById("gate").classList.add("hidden");
+});
+
+document.getElementById("clearMine")?.addEventListener("click", () => {
+  const chat = state.chats.find((c) => c.id === state.activeId);
+  if (!chat) return;
+  if (!confirm("Удалить все ваши сообщения в этом чате?")) return;
+  const nick = live && live.nick;
+  chat.messages = (chat.messages || []).filter(function (m) {
+    if (m.from === "me") return false;
+    if (nick && m.author === nick) return false;
+    return true;
+  });
+  saveState();
+  renderMessages(chat);
+  renderList(els.search.value);
+  if (live && live.enabled && live.ws && live.ws.readyState === 1 && live.inRoom) {
+    live.ws.send(JSON.stringify(NGP.frame("CLEAR_MINE", { room: live.roomId, nick: nick })));
+  }
 });
 
 document.getElementById("routesBack")?.addEventListener("click", () => {

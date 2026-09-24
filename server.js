@@ -435,6 +435,19 @@ function handleMessage(ws, raw) {
       return;
     }
 
+    if (t === "CLEAR_MINE") {
+      if (!ws.roomId) {
+        error(ws, "NOT_IN_ROOM", msg.id);
+        return;
+      }
+      const list = (recent.get(ws.roomId) || []).filter((h) => !h.body || h.body.nick !== ws.nick);
+      recent.set(ws.roomId, list);
+      saveHist();
+      broadcast(ws.roomId, "CLEAR_MINE", { room: ws.roomId, nick: ws.nick }, null);
+      send(ws, "ACK", { of: msg.id });
+      return;
+    }
+
     if (t === "MEDIA_START" || t === "MEDIA_END") {
       if (!ws.roomId) {
         error(ws, "NOT_IN_ROOM", msg.id);

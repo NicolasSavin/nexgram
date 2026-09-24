@@ -4,6 +4,10 @@ const PTT = {
   seq: 0,
   talking: false,
   video: false,
+  sticky: false,
+  facing: "environment",
+  localChunks: [],
+  inbox: {},
   playQ: Promise.resolve(),
   mime: "audio/webm;codecs=opus",
 
@@ -26,12 +30,14 @@ const PTT = {
     return false;
   },
 
-  async start(videoMode) {
+  async start(videoMode, sticky) {
     if (this.talking) return;
     this.video = !!videoMode;
+    this.sticky = !!sticky;
+    this.localChunks = [];
     const btn = document.getElementById(this.video ? "pttVidBtn" : "pttBtn");
     const cons = this.video
-      ? { audio: { echoCancellation: true, noiseSuppression: true }, video: { facingMode: "user", width: { max: 480 }, height: { max: 360 }, frameRate: { max: 12 } } }
+      ? { audio: { echoCancellation: true, noiseSuppression: true }, video: { facingMode: this.facing, width: { max: 480 }, height: { max: 360 }, frameRate: { max: 12 } } }
       : { audio: { echoCancellation: true, noiseSuppression: true } };
     try {
       this.stream = await navigator.mediaDevices.getUserMedia(cons);
@@ -71,7 +77,7 @@ const PTT = {
         this.status("Нет реле. Сначала войдите в комнату.", "live");
       }
     } else {
-      this.status(this.video ? "Видеоэфир… говорите" : "Эфир… говорите", "live");
+      this.status(this.video ? (this.sticky ? "Постоянное видео" : "Видеоэфир… говорите") : "Эфир… говорите", "live");
     }
 
     const opts = this.mime ? { mimeType: this.mime } : {};
@@ -80,6 +86,7 @@ const PTT = {
     this.rec = new MediaRecorder(this.stream, opts);
     this.rec.ondataavailable = async (ev) => {
       if (!ev.data || ev.data.size < 12) return;
+      if (!this.video) this.localChunks.push(ev.data);
       const buf = new Uint8Array(await ev.data.arrayBuffer());
       this.seq += 1;
       if (live.enabled && LiveCrypto.key) {
@@ -95,13 +102,87 @@ const PTT = {
       }
     };
     this.rec.start(this.video ? 500 : 400);
+    const flip = document.getElementById("pttFlipBtn");
+    if (flip) flip.textContent = this.facing === "user" ? "Тыл" : "Фронт";
+  },
+
+  keepClip(blob, from, author, label) {
+    const chat = typeof ensureLiveChat === "function" ? ensureLiveChat() : null;
+    if (!chat || !blob || blob.size < 12) return;
+    const msg = {
+      id: Date.now() + Math.floor(Math.random() * 1000),
+      from: from,
+      author: author,
+      text: label,
+      voice: URL.createObjectURL(blob),
+      ts: Date.now()
+    };
+    chat.messages.push(msg);
+    if (typeof saveState === "function") saveState();
+    if (typeof renderMessages === "function" && typeof state !== "undefined" && isLiveId(state.activeId)) renderMessages(chat);
+    if (blob.size < 500000) {
+      const reader = new FileReader();
+      reader.onload = function () {
+        msg.voice = reader.result;
+        if (typeof saveState === "function") saveState();
+      };
+      reader.readAsDataURL(blob);
+    }
+  },
+
+  async flip() {
+    this.facing = this.facing === "user" ? "environment" : "user";
+    const flip = document.getElementById("pttFlipBtn");
+    if (flip) flip.textContent = this.facing === "user" ? "Тыл" : "Фронт";
+    if (!this.talking || !this.video) {
+      this.status(this.facing === "user" ? "Камера: фронтальная" : "Камера: тыльная", "live");
+      return;
+    }
+    const prev = this.preview();
+    try {
+      const next = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true },
+        video: { facingMode: this.facing, width: { max: 480 }, height: { max: 360 }, frameRate: { max: 12 } }
+      });
+      if (this.stream) this.stream.getTracks().forEach((t) => t.stop());
+      this.stream = next;
+      if (prev) { prev.srcObject = next; prev.play().catch(function () {}); }
+      if (this.rec && this.rec.state !== "inactive") {
+        try { this.rec.stop(); } catch (e) {}
+      }
+      const opts = this.mime ? { mimeType: this.mime, videoBitsPerSecond: 180000 } : { videoBitsPerSecond: 180000 };
+      this.rec = new MediaRecorder(this.stream, opts);
+      const self = this;
+      this.rec.ondataavailable = async (ev) => {
+        if (!ev.data || ev.data.size < 12) return;
+        const buf = new Uint8Array(await ev.data.arrayBuffer());
+        self.seq += 1;
+        if (live.enabled && LiveCrypto.key) {
+          const packet = await LiveCrypto.encryptBytes(buf);
+          self.send("PTT_CHUNK", {
+            room: live.roomId,
+            nick: live.nick,
+            seq: self.seq,
+            mime: self.rec.mimeType || self.mime,
+            video: true,
+            ...packet
+          });
+        }
+      };
+      this.rec.start(500);
+      this.status("Постоянное видео · " + (this.facing === "user" ? "фронт" : "тыл"), "live");
+    } catch (e) {
+      this.status("Камера не переключилась", "live");
+    }
   },
 
   stop() {
+    const chunks = this.localChunks || [];
+    const wasVideo = this.video;
     document.getElementById("pttBtn") && document.getElementById("pttBtn").classList.remove("hot");
     document.getElementById("pttVidBtn") && document.getElementById("pttVidBtn").classList.remove("hot");
     if (this.rec && this.rec.state !== "inactive") {
-      try { this.rec.stop(); } catch {}
+      try { this.rec.stop(); } catch (e) {}
     }
     this.rec = null;
     const prev = this.preview();
@@ -110,10 +191,16 @@ const PTT = {
       this.stream.getTracks().forEach((t) => t.stop());
       this.stream = null;
     }
+    if (!wasVideo && chunks.length) {
+      const blob = new Blob(chunks, { type: this.mime || "audio/webm" });
+      this.keepClip(blob, "me", live && live.nick, "Голосовое");
+    }
+    this.localChunks = [];
     if (this.talking) this.send("PTT_END", { room: live && live.roomId, nick: live && live.nick });
     this.talking = false;
     this.video = false;
-    this.status("Рация · зажмите PTT или Видео");
+    this.sticky = false;
+    this.status("Рация · зажмите PTT или нажмите Видео");
   },
 
   async handle(msg) {
@@ -126,10 +213,16 @@ const PTT = {
       return;
     }
     if (msg.t === "PTT_END") {
+      const bag = this.inbox[b.nick];
+      if (bag && bag.parts.length && !bag.video) {
+        const blob = new Blob(bag.parts, { type: bag.mime || "audio/webm" });
+        this.keepClip(blob, "them", b.nick, "Голосовое");
+      }
+      if (b.nick) delete this.inbox[b.nick];
       this.show(this.remote(), false);
       const rv = this.remote();
       if (rv) rv.removeAttribute("src");
-      if (!this.talking) this.status("Рация · зажмите PTT или Видео");
+      if (!this.talking) this.status("Рация · зажмите PTT или нажмите Видео");
       return;
     }
     if (msg.t === "ERROR" && b.code === "PTT_BUSY") {
@@ -142,22 +235,14 @@ const PTT = {
     const raw = await LiveCrypto.decryptBytes(b.iv, b.data);
     if (!raw) return;
     const isVid = !!(b.video || (b.mime && String(b.mime).indexOf("video/") === 0));
+    if (!this.inbox[b.nick]) this.inbox[b.nick] = { parts: [], mime: b.mime, video: isVid };
+    const bag = this.inbox[b.nick];
+    bag.video = bag.video || isVid;
+    bag.mime = b.mime || bag.mime;
+    bag.parts.push(new Blob([raw], { type: b.mime || "application/octet-stream" }));
     const blob = new Blob([raw], { type: b.mime || (isVid ? "video/webm" : "audio/webm") });
     const url = URL.createObjectURL(blob);
     this.playQ = this.playQ.then(() => this.play(url, isVid)).catch(() => {});
-    const chat = typeof ensureLiveChat === "function" ? ensureLiveChat() : null;
-    if (chat && b.seq === 1) {
-      chat.messages.push({
-        id: Date.now(),
-        from: "them",
-        author: b.nick,
-        text: isVid ? "Видеоэфир" : "Голосовое",
-        voice: isVid ? undefined : url,
-        video: isVid ? url : undefined,
-        ts: Date.now()
-      });
-      if (typeof renderMessages === "function") renderMessages(chat);
-    }
   },
 
   play(url, isVid) {
@@ -199,5 +284,19 @@ const PTT = {
     btn.addEventListener("pointercancel", up);
   }
   bind("pttBtn", false);
-  bind("pttVidBtn", true);
+  const vid = document.getElementById("pttVidBtn");
+  if (vid) {
+    vid.addEventListener("click", function (e) {
+      e.preventDefault();
+      if (PTT.talking && PTT.video && PTT.sticky) PTT.stop();
+      else if (!PTT.talking) PTT.start(true, true);
+    });
+  }
+  const flip = document.getElementById("pttFlipBtn");
+  if (flip) {
+    flip.addEventListener("click", function (e) {
+      e.preventDefault();
+      PTT.flip();
+    });
+  }
 })();

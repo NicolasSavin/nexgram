@@ -95,7 +95,7 @@ body {
   color: var(--muted);
 }
 
-.icon-btn {
+#clearMine { width: auto; padding: 0 10px; border-radius: 12px; font-size: 13px; color: #f3b4b4; }
   background: none;
   border: none;
   color: var(--muted);
@@ -481,6 +481,12 @@ body {
   box-shadow: 0 8px 20px rgba(201, 162, 39, .35);
   font-size: 13px;
   font-weight: 700;
+}
+.ptt-btn.ptt-flip {
+  width: 72px;
+  height: 72px;
+  font-size: 13px;
+  background: #3d4f63;
 }
 .ptt-btn.ptt-vid.hot {
   background: radial-gradient(circle at 30% 30%, #ffd54f, #f9a825 60%, #ef6c00);
