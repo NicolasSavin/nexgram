@@ -120,7 +120,7 @@
   <script src="live-ui.js"></script>
   <script>
     (function(){ var b=document.getElementById("boot"); if(b) b.remove(); })();
-    window.onerror=function(m){ var b=document.getElementById("boot"); if(!b){ b=document.createElement("div"); b.id="boot"; document.body.appendChild(b);} b.innerHTML="<h1>Радар</h1><p>"+m+"</p>"; b.style.display="flex"; };
+    window.onerror = function () { return true; };
   </script>
 </body>
 </html>

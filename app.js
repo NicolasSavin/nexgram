@@ -735,6 +735,7 @@ async function startLive(nick, roomId, pass) {
   if (typeof renderList === "function") renderList();
   const commit = await NGP.commit(roomId, pass);
   live.joinBody = { room: roomId, nick: nick, commit: commit };
+  live.pass = pass;
   const here = (location.protocol === "http:" || location.protocol === "https:")
     ? ((location.protocol === "https:" ? "wss:" : "ws:") + "//" + location.host)
     : "";
@@ -802,7 +803,9 @@ async function startLive(nick, roomId, pass) {
     }, 20000);
     live._relayOk = function () { clearTimeout(t); resolve(); };
     live._relayFail = function (e) { clearTimeout(t); reject(e || new Error("relay")); };
-    ws.onerror = () => live._relayFail(new Error("ws error"));
+    ws.onerror = function () {
+      if (typeof live._relayFail === "function") live._relayFail(new Error("ws error"));
+    };
   });
   ws.onmessage = async (ev) => {
     const msg = NGP.parse(ev.data);
@@ -892,10 +895,21 @@ async function startLive(nick, roomId, pass) {
       renderList(els.search.value);
     }
   };
-  ws.onclose = () => {
+  ws.onclose = function () {
+    if (live.ws && live.ws !== ws) return;
     chat.status = "нет связи с реле";
-    if (isLiveId(state.activeId)) els.convStatus.textContent = chat.status;
+    if (isLiveId(state.activeId) && els.convStatus) els.convStatus.textContent = chat.status;
     if (typeof live._relayFail === "function") live._relayFail(new Error("closed"));
+    live.inRoom = false;
+    if (live.pass && live.roomId && !live._reconnecting) {
+      live._reconnecting = true;
+      setTimeout(function () {
+        live._reconnecting = false;
+        if (!live.inRoom && live.pass) {
+          startLive(live.nick, live.roomId, live.pass).catch(function () {});
+        }
+      }, 2000);
+    }
   };
   ws.send(JSON.stringify(NGP.frame("HELLO", { client: "nexgram-web/0.3", features: ["aes-gcm", "history"] })));
   await joined;
