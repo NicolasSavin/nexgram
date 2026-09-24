@@ -550,7 +550,12 @@ function radarSocket(wsUrl) {
       get: function () { return fake._onopen; }
     });
     Object.defineProperty(fake, "onmessage", {
-      set: function (fn) { fake._onmessage = fn; },
+      set: function (fn) {
+        fake._onmessage = fn;
+        var q = fake._queue || [];
+        fake._queue = [];
+        q.forEach(function (data) { fn({ data: data }); });
+      },
       get: function () { return fake._onmessage; }
     });
     Object.defineProperty(fake, "onerror", {
@@ -565,8 +570,10 @@ function radarSocket(wsUrl) {
       fake.readyState = 1;
       if (fake._onopen) fake._onopen();
     };
+    fake._queue = [];
     window.__radarWsOnMessage = function (data) {
       if (fake._onmessage) fake._onmessage({ data: data });
+      else fake._queue.push(data);
     };
     window.__radarWsOnError = function (m) {
       if (fake._onerror) fake._onerror(new Error(m || "ws"));
@@ -623,7 +630,12 @@ function httpSocket(base) {
     get: function () { return fake._onopen; }
   });
   Object.defineProperty(fake, "onmessage", {
-    set: function (fn) { fake._onmessage = fn; },
+    set: function (fn) {
+      fake._onmessage = fn;
+      var pending = fake._queue || [];
+      fake._queue = [];
+      pending.forEach(function (data) { fn({ data: data }); });
+    },
     get: function () { return fake._onmessage; }
   });
   Object.defineProperty(fake, "onerror", {
@@ -632,7 +644,12 @@ function httpSocket(base) {
   });
   function emitOut(out) {
     (out || []).forEach(function (m) {
-      if (fake._onmessage) fake._onmessage({ data: typeof m === "string" ? m : JSON.stringify(m) });
+      var data = typeof m === "string" ? m : JSON.stringify(m);
+      if (fake._onmessage) fake._onmessage({ data: data });
+      else {
+        fake._queue = fake._queue || [];
+        fake._queue.push(data);
+      }
     });
   }
   function pump() {
@@ -714,6 +731,7 @@ async function startLive(nick, roomId, pass) {
   const chat = ensureLiveChat(roomId);
   chat.name = (roomId === "smena") ? "Чат работников" : roomId;
   chat.status = "подключение к реле…";
+  if (els.convStatus) els.convStatus.textContent = chat.status;
   if (typeof renderList === "function") renderList();
   const commit = await NGP.commit(roomId, pass);
   live.joinBody = { room: roomId, nick: nick, commit: commit };
@@ -786,7 +804,6 @@ async function startLive(nick, roomId, pass) {
     live._relayFail = function (e) { clearTimeout(t); reject(e || new Error("relay")); };
     ws.onerror = () => live._relayFail(new Error("ws error"));
   });
-  ws.send(JSON.stringify(NGP.frame("HELLO", { client: "nexgram-web/0.3", features: ["aes-gcm", "history"] })));
   ws.onmessage = async (ev) => {
     const msg = NGP.parse(ev.data);
     if (!msg) return;
@@ -879,6 +896,7 @@ async function startLive(nick, roomId, pass) {
     if (isLiveId(state.activeId)) els.convStatus.textContent = chat.status;
     if (typeof live._relayFail === "function") live._relayFail(new Error("closed"));
   };
+  ws.send(JSON.stringify(NGP.frame("HELLO", { client: "nexgram-web/0.3", features: ["aes-gcm", "history"] })));
   await joined;
 }
 
