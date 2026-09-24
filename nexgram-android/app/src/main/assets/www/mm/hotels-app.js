@@ -4,7 +4,8 @@ function hereFetch(extra){
   var i=0;
   function one(){
     if(i>=HERE_BASES.length) return Promise.reject(new Error("here"));
-    var url=HERE_BASES[i++]+"/here"+(extra||"");
+    var extraQ = extra ? ("?" + String(extra).replace(/^[?&]/, "")) : "";
+    var url=HERE_BASES[i++]+"/here"+extraQ;
     var ctrl=typeof AbortController!=="undefined"?new AbortController():null;
     var t=ctrl?setTimeout(function(){ try{ctrl.abort();}catch(e){} }, 8000):null;
     return fetch(url,{cache:"no-store",signal:ctrl?ctrl.signal:undefined}).then(function(r){
@@ -58,9 +59,10 @@ async function imHere(){
   var u=user(); if(!u) return;
   var h=hereHotel; if(!h) return;
   try{
-    await hereFetch("&action=set&login="+encodeURIComponent(u.login)+"&name="+encodeURIComponent(u.name)+"&hotel="+encodeURIComponent(h.n)+"&city="+encodeURIComponent(cityOf(h)));
+    await hereFetch("action=set&login="+encodeURIComponent(u.login)+"&name="+encodeURIComponent(u.name)+"&hotel="+encodeURIComponent(h.n)+"&city="+encodeURIComponent(cityOf(h)));
     loadHere();
     fillHereIn(h);
+    alert("Отмечены: "+h.n);
   }catch(e){alert("Не удалось отметить");}
 }
 function showApp(){

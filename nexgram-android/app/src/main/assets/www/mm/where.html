@@ -69,11 +69,18 @@ document.getElementById("gate").style.display="none";
 document.getElementById("app").style.display="block";
 var by={};
 try{var j=await hereFetch(); (j.people||[]).forEach(function(p){by[norm(p.login)]=p;});}catch(e){}
+var seen={};
 var on=[], off=[];
 (window.HOTEL_USERS||[]).forEach(function(u){
+seen[norm(u.login)]=1;
 var p=by[norm(u.login)];
-if(p&&p.hotel) on.push("<div class='row'><b>"+(u.name||u.login)+"</b> — "+p.hotel+(p.city?(" · "+p.city):"")+"</div>");
+if(p&&p.hotel) on.push("<div class='row'><b>"+(p.name||u.name||u.login)+"</b> — "+p.hotel+(p.city?(" · "+p.city):"")+"</div>");
 else off.push("<div class='row muted'><b>"+(u.name||u.login)+"</b> — не отметился</div>");
+});
+Object.keys(by).forEach(function(k){
+if(seen[k]) return;
+var p=by[k];
+if(p&&p.hotel) on.push("<div class='row'><b>"+(p.name||p.login)+"</b> — "+p.hotel+(p.city?(" · "+p.city):"")+"</div>");
 });
 document.getElementById("sum").textContent="На местах "+on.length+" · не отметились "+off.length;
 document.getElementById("on").innerHTML="<b>На местах</b>"+(on.join("")||"<div class='row muted'>Пока никто не отметился</div>");
