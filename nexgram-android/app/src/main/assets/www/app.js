@@ -300,6 +300,25 @@ function openChat(id) {
   els.input.focus();
   var ptt = document.querySelector(".ptt-wrap");
   if (ptt) ptt.style.display = isLiveId(id) ? "" : "none";
+  if (isLiveId(id) && typeof live !== "undefined" && !live._opening) {
+    var same = live.inRoom && (!chat.room || live.roomId === chat.room);
+    if (!same) {
+      var saved = typeof loadGate === "function" ? loadGate() : null;
+      var room = chat.room || (saved && saved.room) || "";
+      var pass = (saved && saved.room === room && saved.pass) || "";
+      if (room && pass && typeof startLive === "function") {
+        live._opening = true;
+        chat.status = "подключение к реле…";
+        els.convStatus.textContent = chat.status;
+        startLive(saved.nick || live.nick || "Гость", room, pass).finally(function () { live._opening = false; });
+      } else {
+        chat.status = "сначала войдите в комнату";
+        els.convStatus.textContent = chat.status;
+        var gate = document.getElementById("gate");
+        if (gate) gate.classList.remove("hidden");
+      }
+    }
+  }
 }
 
 function renderMessages(chat) {
@@ -999,6 +1018,7 @@ document.getElementById("gateJoin").addEventListener("click", async () => {
   try {
     await startLive(nick, room, pass);
     document.getElementById("gate").classList.add("hidden");
+    if (typeof openChat === "function" && typeof ensureLiveChat === "function") openChat(ensureLiveChat(room).id);
   } catch (e) {
     const m = (e && e.message) ? e.message : String(e);
     alert("Нет связи с реле или ошибка входа.\n" + m);

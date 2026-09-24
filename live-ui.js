@@ -52,7 +52,9 @@
       chat.online = names.length > 1;
     }
     var st = document.getElementById("convStatus");
-    if (st && state.activeId === "live") st.textContent = chat ? chat.status : "";
+    var openLive = typeof isLiveId === "function" && isLiveId(state.activeId);
+    if (st && openLive) st.textContent = chat ? chat.status : "";
+    if (openLive && chat && typeof renderMessages === "function") renderMessages(chat);
     var box = document.getElementById("onlineList");
     if (box) {
       box.innerHTML = names.length
