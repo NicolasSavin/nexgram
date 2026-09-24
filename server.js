@@ -375,6 +375,51 @@ const server = http.createServer((req, res) => {
     }).catch((e) => sendJson(200, { ok: false, why: String(e && e.message || e), city: city }));
     return;
   }
+  if (urlPath === "/room-look") {
+    const FILE = path.join(ROOT, "room-look.json");
+    const WALLS = new Set(["night", "sea", "forest", "sand", "dusk", "paper"]);
+    const keyOf = (s) => String(s || "").trim().toLowerCase().replace(/ё/g, "е").slice(0, 64);
+    const loadL = () => {
+      try {
+        const d = JSON.parse(fs.readFileSync(FILE, "utf8"));
+        if (d && d.rooms) return d;
+      } catch (e) {}
+      return { rooms: {} };
+    };
+    const saveL = (d) => { try { fs.writeFileSync(FILE, JSON.stringify(d)); } catch (e) {} };
+    const q = new URL(req.url, "http://127.0.0.1");
+    if (req.method === "GET") {
+      const room = keyOf(q.searchParams.get("room"));
+      const row = loadL().rooms[room] || { wall: "night", welcome: "" };
+      res.writeHead(200, Object.assign({ "Content-Type": "application/json" }, cors));
+      res.end(JSON.stringify({ ok: true, wall: row.wall || "night", welcome: row.welcome || "" }));
+      return;
+    }
+    if (req.method === "POST") {
+      let buf = "";
+      req.on("data", (c) => { buf += c; if (buf.length > 8000) req.destroy(); });
+      req.on("end", () => {
+        let body = {};
+        try { body = JSON.parse(buf || "{}"); } catch (e) {}
+        const room = keyOf(body.room);
+        const data = loadL();
+        if (room && room !== "smena") {
+          data.rooms[room] = {
+            wall: WALLS.has(body.wall) ? body.wall : "night",
+            welcome: String(body.welcome || "").slice(0, 200)
+          };
+          saveL(data);
+        }
+        const row = (room && data.rooms[room]) || { wall: "night", welcome: "" };
+        res.writeHead(200, Object.assign({ "Content-Type": "application/json" }, cors));
+        res.end(JSON.stringify({ ok: true, wall: row.wall || "night", welcome: row.welcome || "" }));
+      });
+      return;
+    }
+    res.writeHead(405, cors);
+    res.end();
+    return;
+  }
   if (urlPath === "/drivers") {
     const FILE = path.join(ROOT, "drivers.json");
     const SEED = [

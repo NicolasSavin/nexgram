@@ -116,6 +116,8 @@
       vis(room, false);
       vis(pass, false);
       vis(pin, true);
+      vis(document.getElementById("gateWalls"), false);
+      vis(document.getElementById("gateHi"), false);
       if (join) join.textContent = "Далее";
       staffOk = false;
       if (sel) sel.innerHTML = "";
@@ -126,6 +128,8 @@
       vis(room, true);
       vis(pass, true);
       vis(pin, false);
+      vis(document.getElementById("gateWalls"), true);
+      vis(document.getElementById("gateHi"), true);
       var passLab = pass && pass.previousElementSibling;
       if (passLab) passLab.textContent = "Пароль комнаты (свой, не с сайта)";
       var roomLab = room && room.previousElementSibling;

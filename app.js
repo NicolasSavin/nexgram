@@ -325,6 +325,13 @@ function renderMessages(chat) {
   els.messages.innerHTML = "";
   let lastDay = "";
   chat.messages.forEach((m) => {
+    if (m.welcome) {
+      const note = document.createElement("div");
+      note.className = "welcome-note";
+      note.textContent = m.text;
+      els.messages.appendChild(note);
+      return;
+    }
     const day = fmtDay(m.ts);
     if (day !== lastDay) {
       lastDay = day;

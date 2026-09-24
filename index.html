@@ -20,7 +20,7 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <a id="getapk" href="/Radar-1.0.10.apk">Скачать Радар 1.0.10 для Android</a>
+  <a id="getapk" href="/Radar-1.0.11.apk">Скачать Радар 1.0.11 для Android</a>
   <div id="boot"><h1>Радар</h1><p>загрузка…</p></div>
   <div class="app" id="app">
     <aside class="sidebar" id="sidebar">
@@ -105,6 +105,17 @@
       <input id="gateRoom" maxlength="64" placeholder="friends или smena" />
       <label>Пароль</label>
       <input id="gatePass" type="password" maxlength="128" />
+      <label id="gateWallLab">Обои</label>
+      <div class="walls" id="gateWalls">
+        <button type="button" data-wall="night" class="on" title="Ночь"></button>
+        <button type="button" data-wall="sea" title="Море"></button>
+        <button type="button" data-wall="forest" title="Лес"></button>
+        <button type="button" data-wall="sand" title="Песок"></button>
+        <button type="button" data-wall="dusk" title="Закат"></button>
+        <button type="button" data-wall="paper" title="Бумага"></button>
+      </div>
+      <label id="gateHiLab">Приветствие</label>
+      <input id="gateHi" maxlength="200" placeholder="Что увидят, когда войдут" />
       <button type="button" id="gateJoin">Войти</button>
       <button type="button" class="ghost" id="gateSaved">Быстрый вход</button>
       <button type="button" class="ghost" id="gateSkip">Позже</button>
@@ -136,6 +147,7 @@
   </script>
   <script src="access.js"></script>
   <script src="live-ui.js"></script>
+  <script src="look.js"></script>
   <script>
     (function(){ var b=document.getElementById("boot"); if(b) b.remove(); })();
     window.onerror = function () { return true; };
