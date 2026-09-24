@@ -17,6 +17,14 @@
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
     <queries>
         <package android:name="ru.rzd.pass" />
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="sms" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="smsto" />
+        </intent>
     </queries>
 
     <application

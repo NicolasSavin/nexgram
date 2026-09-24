@@ -73,7 +73,7 @@ textarea{min-height:72px;resize:vertical}
 </div>
 <label class="l">Состав</label><input id="cr" placeholder="фамилии через запятую">
 <label class="l">Примечание</label><textarea id="nt" placeholder="время выхода, документы, особые указания"></textarea>
-<button class="go" type="button" onclick="saveN()">Сохранить наряд</button>
+<button class="go" type="button" onclick="saveN()">Добавить наряд</button>
 <p class="ok" id="saved"></p>
 </div>
 <div class="card">
@@ -103,37 +103,27 @@ function enter(){
 }
 function out(){ localStorage.removeItem(KEY); location.reload(); }
 function esc(s){return String(s||"").replace(/</g,"");}
-function draw(j){
-  document.getElementById("when").textContent="Сегодня "+(j.date||"");
-  var n=j.naryad||{};
-  var empty=!n.from && !n.to && !n.cargo && !n.wagons && !n.cars;
+function card(n){
   var span=(n.since||n.until)?((n.since||"—")+" — "+(n.until||"—")):"—";
-  var html=empty
-    ? "<p class='lead' style='margin:0'>Наряд ещё не поставлен. Заполните ниже — увидят все, кто вошёл.</p>"
-    : "<div class='kv'><b>Срок</b> "+esc(span)+"</div>"
-      +"<div class='kv'><b>Вагоны</b> "+esc(n.wagons||0)+"</div>"
-      +"<div class='kv'><b>А/м</b> "+esc(n.cars||0)+"</div>"
-      +"<div class='kv'><b>Маршрут</b> "+esc(n.from||"—")+" → "+esc(n.to||"—")+"</div>"
-      +"<div class='kv'><b>Груз</b> "+esc(n.cargo||"—")+"</div>"
-      +"<div class='kv'><b>Старший</b> "+esc(n.senior||"—")+"</div>"
-      +"<div class='kv'><b>Состав</b> "+esc(n.crew||"—")+"</div>"
-      +"<div class='kv'><b>Гостиница</b> "+esc(n.hotel||"—")+"</div>"
-      +(n.note? "<div class='kv'><b>Указания</b> "+esc(n.note)+"</div>":"")
-      +(n.by? "<div class='kv'><b>Поставил</b> "+esc(n.by)+"</div>":"");
-  document.getElementById("view").innerHTML=html;
-  if(!empty){
-    if(n.since) document.getElementById("since").value=n.since;
-    if(n.until) document.getElementById("until").value=n.until;
-    document.getElementById("wagons").value=n.wagons||0;
-    document.getElementById("cars").value=n.cars||0;
-    document.getElementById("fr").value=n.from||"";
-    document.getElementById("to").value=n.to||"";
-    document.getElementById("cg").value=n.cargo||"";
-    document.getElementById("sr").value=n.senior||"";
-    document.getElementById("ht").value=n.hotel||"";
-    document.getElementById("cr").value=n.crew||"";
-    document.getElementById("nt").value=n.note||"";
-  }
+  return "<div class='card' style='margin-top:10px'>"
+    +"<div class='kv'><b>Срок</b> "+esc(span)+"</div>"
+    +"<div class='kv'><b>Вагоны</b> "+esc(n.wagons||0)+"</div>"
+    +"<div class='kv'><b>А/м</b> "+esc(n.cars||0)+"</div>"
+    +"<div class='kv'><b>Маршрут</b> "+esc(n.from||"—")+" → "+esc(n.to||"—")+"</div>"
+    +"<div class='kv'><b>Груз</b> "+esc(n.cargo||"—")+"</div>"
+    +"<div class='kv'><b>Старший</b> "+esc(n.senior||"—")+"</div>"
+    +"<div class='kv'><b>Состав</b> "+esc(n.crew||"—")+"</div>"
+    +"<div class='kv'><b>Гостиница</b> "+esc(n.hotel||"—")+"</div>"
+    +(n.note? "<div class='kv'><b>Указания</b> "+esc(n.note)+"</div>":"")
+    +(n.by? "<div class='kv'><b>Поставил</b> "+esc(n.by)+"</div>":"")
+    +"<button class='btn' type='button' style='margin-top:8px' onclick=\"dropN('"+esc(n.id)+"')\">Удалить</button>"
+    +"</div>";
+}
+function draw(j){
+  document.getElementById("when").textContent="Сегодня "+(j.date||"")+". Можно несколько нарядов сразу.";
+  var list=j.list||[];
+  if(!list.length && j.naryad && (j.naryad.from||j.naryad.to)) list=[j.naryad];
+  document.getElementById("view").innerHTML=list.length? list.map(card).join("") : "<p class='lead' style='margin:0'>Нарядов нет. Добавьте ниже. Старый не сотрётся.</p>";
   var inc=j.incidents||[];
   document.getElementById("inc").innerHTML=inc.length? inc.slice().reverse().map(function(x){
     var t=x.ts? new Date(x.ts*1000).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"}):"";
@@ -165,9 +155,22 @@ async function saveN(){
   try{
     var j=await (await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)})).json();
     if(!j.ok && !j.naryad) throw new Error("no");
-    document.getElementById("saved").textContent="Наряд сохранён, виден всем.";
+    document.getElementById("saved").textContent="Наряд добавлен. Старые на месте.";
+    document.getElementById("fr").value="";
+    document.getElementById("to").value="";
+    document.getElementById("cg").value="";
+    document.getElementById("sr").value="";
+    document.getElementById("cr").value="";
+    document.getElementById("nt").value="";
     draw(j);
   }catch(e){ document.getElementById("saved").textContent="Не сохранилось."; }
+}
+async function dropN(id){
+  if(!id) return;
+  try{
+    var j=await (await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"del",id:id})})).json();
+    draw(j);
+  }catch(e){ alert("Не удалилось"); }
 }
 async function saveInc(){
   var u=user(); if(!u) return;

@@ -353,6 +353,15 @@ function renderMessages(chat) {
       box.appendChild(player);
       el.querySelector(".text").after(box);
     }
+    if (m.sms && m.text) {
+      const sms = document.createElement("a");
+      sms.href = "sms:?body=" + encodeURIComponent(m.text);
+      sms.textContent = "Открыть SMS";
+      sms.style.display = "inline-block";
+      sms.style.marginTop = "6px";
+      sms.style.color = "#7ec8ff";
+      el.querySelector(".text").after(sms);
+    }
     if (m.image) {
       const img = document.createElement("img");
       img.src = m.image;
@@ -920,6 +929,7 @@ async function startLive(nick, roomId, pass) {
       return;
     }
     if (msg.t === "PEERS") {
+      live.names = msg.body.names || [];
       if (window.RadarLive) RadarLive.setOnline(msg.body.names || [], msg.body.where || []);
       else {
         chat.status = "NGP/1 · " + msg.body.count;
@@ -999,11 +1009,22 @@ sendMessage = function (text) {
     }
     LiveCrypto.encrypt(trimmed).then((packet) => {
       live.ws.send(JSON.stringify(NGP.frame("CIPHER", { room: live.roomId, nick: live.nick, ...packet })));
-      chat.messages.push({ id: Date.now(), from: "me", text: trimmed, ts: Date.now() });
+      const alone = Array.isArray(live.names) && live.names.length < 2;
+      chat.messages.push({ id: Date.now(), from: "me", text: trimmed, ts: Date.now(), sms: alone ? 1 : 0 });
       saveState();
       renderMessages(chat);
       renderList(els.search.value);
     });
+    return;
+  }
+  if (live.enabled && isLiveId(state.activeId)) {
+    const chat = ensureLiveChat(live.roomId);
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    chat.messages.push({ id: Date.now(), from: "me", text: trimmed, ts: Date.now(), sms: 1 });
+    saveState();
+    renderMessages(chat);
+    renderList(els.search.value);
     return;
   }
   _sendMessage(text);

@@ -278,13 +278,21 @@ const server = http.createServer((req, res) => {
     const today = new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10);
     const dayOk = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ""));
     const loadN = () => {
-      let data = { date: today, naryad: {}, incidents: [] };
+      let data = { date: today, naryad: {}, list: [], incidents: [] };
       try { data = JSON.parse(fs.readFileSync(NARYAD_FILE, "utf8")); } catch (e) {}
       data.naryad = data.naryad || {};
       data.incidents = data.incidents || [];
-      const until = data.naryad.until || "";
-      const dead = dayOk(until) ? today > until : (data.date && data.date !== today);
-      if (dead) data = { date: today, naryad: {}, incidents: [] };
+      if (!Array.isArray(data.list)) data.list = [];
+      const old = data.naryad;
+      if (old && (old.from || old.to || old.cargo || old.cars || old.wagons)) {
+        data.list.push(Object.assign({ id: "old-" + (old.since || today) }, old));
+        data.naryad = {};
+      }
+      data.list = data.list.filter((n) => {
+        const until = n && n.until;
+        if (dayOk(until)) return today <= until;
+        return true;
+      });
       return data;
     };
     const saveN = (d) => { try { fs.writeFileSync(NARYAD_FILE, JSON.stringify(d)); } catch (e) {} };
@@ -307,9 +315,13 @@ const server = http.createServer((req, res) => {
             text: String(body.text || "").slice(0, 1000),
             ts: Math.floor(Date.now() / 1000)
           });
+        } else if (body.action === "del") {
+          const id = String(body.id || "");
+          data.list = data.list.filter((n) => String(n.id) !== id);
         } else {
           data.date = today;
-          data.naryad = {
+          data.list.push({
+            id: Date.now().toString(36) + Math.floor(Math.random() * 1000).toString(36),
             since: dayOk(body.since) ? body.since : today,
             until: dayOk(body.until) ? body.until : (dayOk(body.since) ? body.since : today),
             wagons: Math.max(0, Math.min(999, parseInt(body.wagons, 10) || 0)),
@@ -322,7 +334,7 @@ const server = http.createServer((req, res) => {
             crew: String(body.crew || "").slice(0, 200),
             note: String(body.note || "").slice(0, 500),
             by: String(body.name || body.by || "").slice(0, 80)
-          };
+          });
         }
         saveN(data);
         res.writeHead(200, Object.assign({ "Content-Type": "application/json" }, cors));

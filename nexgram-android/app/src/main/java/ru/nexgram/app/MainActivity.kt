@@ -139,6 +139,13 @@ class MainActivity : AppCompatActivity() {
             }
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 val uri = request.url ?: return false
+                val scheme = uri.scheme ?: ""
+                if (scheme == "sms" || scheme == "smsto" || scheme == "tel") {
+                    try {
+                        startActivity(Intent(Intent.ACTION_SENDTO, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    } catch (_: Exception) {}
+                    return true
+                }
                 val host = uri.host ?: return false
                 val inside = host == "appassets.androidplatform.net" ||
                     host.endsWith("trycloudflare.com") ||
