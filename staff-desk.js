@@ -1,5 +1,5 @@
 (function () {
-  var SITE = "https://nicolassavin.github.io/multimodal-routes/";
+  var SITE = "https://karavanmessage.ru/mm/";
   var STAFF_ROOM = "smena";
   var STAFF_NGP = "ntc-smena";
   var STAFF_PIN = "охрана";
