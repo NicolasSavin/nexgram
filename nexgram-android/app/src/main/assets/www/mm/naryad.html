@@ -85,7 +85,25 @@ textarea{min-height:72px;resize:vertical}
 </div>
 </div>
 <script>
-var KEY="mm_user", API="/naryad";
+var KEY="mm_user";
+var NARYAD_BASES=["https://photography-word-essence-knowledge.trycloudflare.com","http://186.246.3.44",""];
+function naryadFetch(opts){
+  var i=0;
+  function one(){
+    if(i>=NARYAD_BASES.length) return Promise.reject(new Error("naryad"));
+    var base=NARYAD_BASES[i++];
+    var ctrl=typeof AbortController!=="undefined"?new AbortController():null;
+    var t=ctrl?setTimeout(function(){ try{ctrl.abort();}catch(e){} }, 8000):null;
+    var o=Object.assign({cache:"no-store"}, opts||{});
+    if(ctrl) o.signal=ctrl.signal;
+    return fetch(base+"/naryad", o).then(function(r){
+      if(t) clearTimeout(t);
+      if(!r.ok) throw new Error("bad");
+      return r.json();
+    }).catch(function(){ if(t) clearTimeout(t); return one(); });
+  }
+  return one();
+}
 (function(){
   var d=new Date(Date.now()+3*3600*1000).toISOString().slice(0,10);
   var a=document.getElementById("since"), b=document.getElementById("until");
@@ -132,7 +150,7 @@ function draw(j){
 }
 async function load(){
   try{
-    var j=await (await fetch(API)).json();
+    var j=await naryadFetch();
     draw(j);
   }catch(e){
     document.getElementById("view").innerHTML="<p class='lead' style='margin:0'>Нет связи с сервером наряда.</p>";
@@ -153,7 +171,7 @@ async function saveN(){
     crew:document.getElementById("cr").value.trim(),
     note:document.getElementById("nt").value.trim()};
   try{
-    var j=await (await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)})).json();
+    var j=await naryadFetch({method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
     if(!j.ok && !j.naryad) throw new Error("no");
     document.getElementById("saved").textContent="Наряд добавлен. Старые на месте.";
     document.getElementById("fr").value="";
@@ -168,7 +186,7 @@ async function saveN(){
 async function dropN(id){
   if(!id) return;
   try{
-    var j=await (await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"del",id:id})})).json();
+    var j=await naryadFetch({method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"del",id:id})});
     draw(j);
   }catch(e){ alert("Не удалилось"); }
 }
@@ -177,7 +195,7 @@ async function saveInc(){
   var text=document.getElementById("incText").value.trim(); if(!text) return;
   document.getElementById("incText").value="";
   try{
-    var j=await (await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"incident",login:u.login,name:u.name||u.login,text:text})})).json();
+    var j=await naryadFetch({method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"incident",login:u.login,name:u.name||u.login,text:text})});
     draw(j);
   }catch(e){ alert("Не записалось"); }
 }
