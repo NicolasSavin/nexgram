@@ -22,16 +22,12 @@ var dt=d && d.indexOf("-")>=0 ? d.split("-").reverse().join(".") : d;
 var num=encodeURIComponent(x.number||"");
 return "https://pass.rzd.ru/tickets/public/ru?STRUCTURE_ID=735&layer_id=5371&dir=0&tfl=3&checkSeats=1&st0="+encodeURIComponent(fr)+"&st1="+encodeURIComponent(to)+"&dt0="+encodeURIComponent(dt)+(num?("&tn="+num):"");
 }
-function openOut(e, href){
-  if (window.RadarNative && RadarNative.openExternal) {
-    if (e && e.preventDefault) e.preventDefault();
-    RadarNative.openExternal(href);
-    return false;
-  }
-  return true;
+function openRzdApp(){
+  if (window.RadarNative && RadarNative.openRzd) { RadarNative.openRzd(); return false; }
+  return false;
 }
-function rzdBtn(x){
-return "<a class='mapbtn' style='text-decoration:none;margin-left:8px' target='_blank' rel='noopener' href='"+rzdUrl(x)+"' onclick='return openOut(event, this.href)'>Открыть в РЖД</a>";
+function rzdBtn(){
+return "<button type='button' class='mapbtn' style='margin-left:8px' onclick='openRzdApp()'>Приложение РЖД</button>";
 }
 (function(){
 if(typeof card!=="function") return;
@@ -42,7 +38,7 @@ var bus=typeof isBus==="function" && isBus(x);
 var mix=typeof isMix==="function" && isMix(x);
 var sap=typeof isSap==="function" && isSap(x);
 if((bus||mix) && html.indexOf("Места Туту")<0) html=html.replace("</article>", busBtns(x)+"</article>");
-if(!bus || mix || sap || x.type==="train") html=html.replace("</article>", rzdBtn(x)+"</article>");
+if(!bus || mix || sap || x.type==="train") html=html.replace("</article>", rzdBtn()+"</article>");
 return html;
 };
 })();
@@ -60,8 +56,7 @@ var txt=st.textContent||"";
 if(/Вариантов:\s*[1-9]/.test(txt)){clearInterval(t);return;}
 if(/Вариантов:\s*0/.test(txt) && /РЖД:\s*[1-9]/.test(txt)){
 clearInterval(t);
-var href=rzdUrl({from:(lastQ&&lastQ.fr)||"", to:(lastQ&&lastQ.to)||""});
-list.innerHTML="<div class='warn'>Яндекс сейчас не отдал расписание (лимит ключа), но РЖД нашла поезда. <a class='map' target='_blank' href='"+href+"'>Открыть эти станции и дату в РЖД</a></div>";
+list.innerHTML="<div class='warn'>Яндекс сейчас не отдал расписание. Билеты открываются в приложении «РЖД Пассажирам», не на сайте. <button type='button' class='mapbtn' onclick='openRzdApp()'>Открыть приложение РЖД</button></div>";
 }
 },400);
 });

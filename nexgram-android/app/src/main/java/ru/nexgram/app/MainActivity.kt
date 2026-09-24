@@ -127,7 +127,14 @@ class MainActivity : AppCompatActivity() {
                     host.endsWith("github.io") ||
                     host.endsWith("jsdelivr.net")
                 if (inside) return false
-                if (!request.isForMainFrame) return false
+                if (host == "pass.rzd.ru" || host.endsWith(".rzd.ru")) {
+                    val launch = packageManager.getLaunchIntentForPackage("ru.rzd.pass")
+                    if (launch != null) {
+                        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        startActivity(launch)
+                    }
+                    return true
+                }
                 try {
                     startActivity(Intent(Intent.ACTION_VIEW, uri))
                 } catch (_: Exception) {}
@@ -209,6 +216,20 @@ class MainActivity : AppCompatActivity() {
     }
 
     inner class RadarBridge {
+        @JavascriptInterface
+        fun openRzd() {
+            runOnUiThread {
+                val launch = packageManager.getLaunchIntentForPackage("ru.rzd.pass")
+                if (launch != null) {
+                    launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    startActivity(launch)
+                    return@runOnUiThread
+                }
+                try {
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://apps.rustore.ru/catalog/app/ru.rzd.pass")))
+                } catch (_: Exception) {}
+            }
+        }
         @JavascriptInterface
         fun openExternal(url: String) {
             runOnUiThread {
