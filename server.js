@@ -205,13 +205,16 @@ const server = http.createServer((req, res) => {
   }
   if (urlPath === "/naryad") {
     const NARYAD_FILE = path.join(ROOT, "naryad.json");
-    const today = new Date().toISOString().slice(0, 10);
+    const today = new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10);
+    const dayOk = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ""));
     const loadN = () => {
       let data = { date: today, naryad: {}, incidents: [] };
       try { data = JSON.parse(fs.readFileSync(NARYAD_FILE, "utf8")); } catch (e) {}
-      if (data.date !== today) data = { date: today, naryad: {}, incidents: [] };
       data.naryad = data.naryad || {};
       data.incidents = data.incidents || [];
+      const until = data.naryad.until || "";
+      const dead = dayOk(until) ? today > until : (data.date && data.date !== today);
+      if (dead) data = { date: today, naryad: {}, incidents: [] };
       return data;
     };
     const saveN = (d) => { try { fs.writeFileSync(NARYAD_FILE, JSON.stringify(d)); } catch (e) {} };
@@ -235,7 +238,11 @@ const server = http.createServer((req, res) => {
             ts: Math.floor(Date.now() / 1000)
           });
         } else {
+          data.date = today;
           data.naryad = {
+            since: dayOk(body.since) ? body.since : today,
+            until: dayOk(body.until) ? body.until : (dayOk(body.since) ? body.since : today),
+            mode: body.mode === "bus" ? "bus" : "rail",
             from: String(body.from || "").slice(0, 80),
             to: String(body.to || "").slice(0, 80),
             cargo: String(body.cargo || "").slice(0, 120),

@@ -11,7 +11,8 @@ h1{margin:0 0 8px;font-size:24px}
 .card{background:#17212b;border-radius:16px;padding:14px;margin:10px 0}
 label{display:block;font-size:11px;color:#d4b483;margin:8px 0 4px;text-transform:uppercase;letter-spacing:.08em}
 input,textarea{width:100%;box-sizing:border-box;padding:10px 12px;border-radius:10px;border:0;background:#0b1624;color:#fff;font:inherit}
-textarea{min-height:64px}
+select{width:100%;box-sizing:border-box;padding:10px 12px;border-radius:10px;border:0;background:#0b1624;color:#fff;font:inherit}
+.dates{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .go{margin-top:12px;border:0;border-radius:999px;padding:12px 18px;font:inherit;font-weight:700;background:#c8943c;color:#1a1206}
 .kv{margin:8px 0}.kv b{color:#d4b483;display:inline-block;min-width:90px;font-size:12px}
 .ok{color:#8ee0b5}.err{color:#f3b4b4}
@@ -24,6 +25,16 @@ textarea{min-height:64px}
 <div class="card" id="view">загрузка…</div>
 <div class="card">
 <b>Поставить наряд</b>
+<label>Срок</label>
+<div class="dates">
+  <input id="since" type="date">
+  <input id="until" type="date">
+</div>
+<label>Как едем</label>
+<select id="mode">
+  <option value="rail">Железная дорога</option>
+  <option value="bus">Автобус</option>
+</select>
 <label>Откуда</label><input id="fr">
 <label>Куда</label><input id="to">
 <label>Груз</label><input id="cg">
@@ -43,6 +54,11 @@ textarea{min-height:64px}
 </div>
 <script>
 var API = "https://photography-word-essence-knowledge.trycloudflare.com/naryad";
+(function(){
+  var d = new Date(Date.now() + 3*3600*1000).toISOString().slice(0,10);
+  document.getElementById("since").value = d;
+  document.getElementById("until").value = d;
+})();
 function user(){
   try {
     var h = (location.hash||"").replace(/^#/,"");
@@ -55,16 +71,24 @@ function draw(j){
   document.getElementById("when").textContent = "Сегодня " + (j.date||"");
   var n = j.naryad || {};
   var empty = !n.from && !n.to && !n.cargo;
+  var how = n.mode === "bus" ? "Автобус" : (n.mode === "rail" ? "Железная дорога" : "—");
+  var span = (n.since || n.until) ? ((n.since||"—") + " — " + (n.until||"—")) : "—";
   document.getElementById("view").innerHTML = empty
     ? "<p class='lead'>Наряд ещё не поставлен.</p>"
-    : "<div class='kv'><b>Маршрут</b> "+esc(n.from)+" → "+esc(n.to)+"</div>"
+    : "<div class='kv'><b>Срок</b> "+esc(span)+"</div>"
+     +"<div class='kv'><b>Как едем</b> "+esc(how)+"</div>"
+     +"<div class='kv'><b>Маршрут</b> "+esc(n.from)+" → "+esc(n.to)+"</div>"
      +"<div class='kv'><b>Груз</b> "+esc(n.cargo||"—")+"</div>"
      +"<div class='kv'><b>Старший</b> "+esc(n.senior||"—")+"</div>"
      +"<div class='kv'><b>Состав</b> "+esc(n.crew||"—")+"</div>"
      +"<div class='kv'><b>Гостиница</b> "+esc(n.hotel||"—")+"</div>"
      +(n.note? "<div class='kv'><b>Указания</b> "+esc(n.note)+"</div>":"")
-     +(n.by? "<div class='kv'><b>Поставил</b> "+esc(n.by)+"</div>":"");
+     +(n.by? "<div class='kv'><b>Поставил</b> "+esc(n.by)+"</div>":"")
+     +"<p class='lead'>Держится до конца даты «по», потом стирается сам.</p>";
   if (!empty) {
+    if (n.since) document.getElementById("since").value = n.since;
+    if (n.until) document.getElementById("until").value = n.until;
+    if (n.mode) document.getElementById("mode").value = n.mode;
     document.getElementById("fr").value = n.from||"";
     document.getElementById("to").value = n.to||"";
     document.getElementById("cg").value = n.cargo||"";
@@ -89,6 +113,9 @@ function load(){
 document.getElementById("saveN").onclick = function(){
   var u = user() || {};
   var body = {
+    since: document.getElementById("since").value,
+    until: document.getElementById("until").value,
+    mode: document.getElementById("mode").value,
     from: document.getElementById("fr").value.trim(),
     to: document.getElementById("to").value.trim(),
     cargo: document.getElementById("cg").value.trim(),
