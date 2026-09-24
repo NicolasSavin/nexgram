@@ -41,6 +41,8 @@ import kotlin.concurrent.thread
 class MainActivity : AppCompatActivity() {
     private lateinit var web: WebView
     private var pendingMic: PermissionRequest? = null
+    private var geoCallback: android.webkit.GeolocationPermissions.Callback? = null
+    private var geoOrigin: String? = null
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
     private var nativeWs: WebSocket? = null
     private val okHttp = OkHttpClient.Builder().readTimeout(0, TimeUnit.MILLISECONDS).build()
@@ -107,6 +109,24 @@ class MainActivity : AppCompatActivity() {
                 intent.putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("image/*", "video/*", "audio/*"))
                 startActivityForResult(Intent.createChooser(intent, "Файл"), 77)
                 return true
+            }
+            override fun onGeolocationPermissionsShowPrompt(
+                origin: String,
+                callback: android.webkit.GeolocationPermissions.Callback
+            ) {
+                val fine = ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.ACCESS_FINE_LOCATION)
+                val coarse = ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.ACCESS_COARSE_LOCATION)
+                if (fine == PackageManager.PERMISSION_GRANTED || coarse == PackageManager.PERMISSION_GRANTED) {
+                    callback.invoke(origin, true, false)
+                    return
+                }
+                geoOrigin = origin
+                geoCallback = callback
+                ActivityCompat.requestPermissions(
+                    this@MainActivity,
+                    arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
+                    32
+                )
             }
         }
         web.webViewClient = object : WebViewClientCompat() {
@@ -179,10 +199,21 @@ class MainActivity : AppCompatActivity() {
             pendingMic?.let { if (ok) it.grant(it.resources) else it.deny() }
             pendingMic = null
         }
+        if (code == 32) {
+            val ok = res.any { it == PackageManager.PERMISSION_GRANTED }
+            geoCallback?.invoke(geoOrigin, ok, false)
+            geoCallback = null
+            geoOrigin = null
+        }
     }
 
     private fun requestAppPerms() {
-        val want = mutableListOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.CAMERA)
+        val want = mutableListOf(
+            Manifest.permission.RECORD_AUDIO,
+            Manifest.permission.CAMERA,
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        )
         if (android.os.Build.VERSION.SDK_INT >= 33) {
             want += Manifest.permission.READ_MEDIA_IMAGES
             want += Manifest.permission.READ_MEDIA_VIDEO

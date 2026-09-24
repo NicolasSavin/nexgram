@@ -317,7 +317,9 @@ function renderMessages(chat) {
     const el = document.createElement("div");
     el.className = "msg " + (m.from === "me" ? "out" : "in");
     const ticks = m.from === "me" ? '<span class="ticks">✓✓</span>' : "";
-    const author = m.author && chat.type === "group" ? `<div style="color:#6ec9cb;font-weight:600;font-size:13px;margin-bottom:2px">${m.author}</div>` : "";
+    const place = (typeof live !== "undefined" && live.places && m.author && live.places[m.author]) || "";
+    const who = (m.author || "") + (place && String(m.author).indexOf(place) < 0 ? " · " + place : "");
+    const author = who && chat.type === "group" ? `<div style="color:#6ec9cb;font-weight:600;font-size:13px;margin-bottom:2px">${who}</div>` : "";
     el.innerHTML = `${author}<span class="text"></span><span class="meta">${fmtTime(m.ts)}${ticks}</span>`;
     el.querySelector(".text").textContent = m.text;
     if (m.voice) {
@@ -721,6 +723,35 @@ function ensureLiveChat(roomId) {
   return chat;
 }
 
+async function detectPlace() {
+  let cached = "";
+  try { cached = localStorage.getItem("radar-place") || ""; } catch (e) {}
+  if (cached && live.joinBody) live.joinBody.place = cached;
+  const pos = await new Promise(function (resolve) {
+    if (!navigator.geolocation) return resolve(null);
+    navigator.geolocation.getCurrentPosition(resolve, function () { resolve(null); }, { enableHighAccuracy: false, timeout: 12000, maximumAge: 300000 });
+  });
+  if (!pos) return cached;
+  const lat = pos.coords.latitude;
+  const lon = pos.coords.longitude;
+  let place = "";
+  try {
+    const r = await fetch("https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=" + lat + "&longitude=" + lon + "&localityLanguage=ru");
+    const j = await r.json();
+    const city = j.city || j.locality || j.principalSubdivision || "";
+    const country = j.countryName || "";
+    place = [city, country].filter(Boolean).join(", ").slice(0, 48);
+  } catch (e) {}
+  if (!place) return cached;
+  try { localStorage.setItem("radar-place", place); } catch (e) {}
+  if (live.joinBody) live.joinBody.place = place;
+  live.place = place;
+  if (live.ws && live.ws.readyState === 1 && live.inRoom) {
+    live.ws.send(JSON.stringify(NGP.frame("PLACE", { place: place })));
+  }
+  return place;
+}
+
 async function startLive(nick, roomId, pass) {
   if (roomId === "smena") pass = "ntc-smena";
   await LiveCrypto.unlock(pass, roomId);
@@ -734,8 +765,9 @@ async function startLive(nick, roomId, pass) {
   if (els.convStatus) els.convStatus.textContent = chat.status;
   if (typeof renderList === "function") renderList();
   const commit = await NGP.commit(roomId, pass);
-  live.joinBody = { room: roomId, nick: nick, commit: commit };
+  live.joinBody = { room: roomId, nick: nick, commit: commit, place: live.place || "" };
   live.pass = pass;
+  detectPlace();
   const here = (location.protocol === "http:" || location.protocol === "https:")
     ? ((location.protocol === "https:" ? "wss:" : "ws:") + "//" + location.host)
     : "";
@@ -830,7 +862,7 @@ async function startLive(nick, roomId, pass) {
       return;
     }
     if (msg.t === "WELCOME") {
-      ws.send(JSON.stringify(NGP.frame("JOIN", { room: roomId, nick, commit })));
+      ws.send(JSON.stringify(NGP.frame("JOIN", live.joinBody || { room: roomId, nick, commit })));
       return;
     }
     if (msg.t === "JOINED") {
@@ -838,7 +870,7 @@ async function startLive(nick, roomId, pass) {
       live._rejoining = false;
       chat.status = "NGP/1 · " + (msg.body.peers || 1);
       if (window.RadarLive) {
-        RadarLive.setOnline(msg.body.names || []);
+        RadarLive.setOnline(msg.body.names || [], msg.body.where || []);
         RadarLive.keep(true);
       }
       if (typeof live._relayOk === "function") {
@@ -867,7 +899,7 @@ async function startLive(nick, roomId, pass) {
       return;
     }
     if (msg.t === "PEERS") {
-      if (window.RadarLive) RadarLive.setOnline(msg.body.names || []);
+      if (window.RadarLive) RadarLive.setOnline(msg.body.names || [], msg.body.where || []);
       else {
         chat.status = "NGP/1 · " + msg.body.count;
         if (isLiveId(state.activeId)) els.convStatus.textContent = chat.status;

@@ -38,12 +38,17 @@
     });
   }
 
-  function setOnline(names) {
+  function setOnline(names, where) {
     names = names || [];
     live.online = names;
+    live.places = live.places || {};
+    (where || []).forEach(function (w) {
+      if (w && w.nick) live.places[w.nick] = w.place || "";
+    });
     var chat = typeof ensureLiveChat === "function" ? ensureLiveChat() : null;
+    var line = names.length ? names.join(", ") : "никого нет";
     if (chat) {
-      chat.status = names.length ? (names.length + " в сети") : "никого нет";
+      chat.status = line;
       chat.online = names.length > 1;
     }
     var st = document.getElementById("convStatus");

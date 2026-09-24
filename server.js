@@ -79,14 +79,30 @@ function parse(raw) {
   return { msg };
 }
 
-function nicksOf(roomId) {
+function countryName(code) {
+  const m = {
+    RU: "Россия", DE: "Германия", HR: "Хорватия", BY: "Беларусь", KZ: "Казахстан",
+    UA: "Украина", US: "США", TR: "Турция", RS: "Сербия", PL: "Польша", FR: "Франция",
+    IT: "Италия", GB: "Великобритания", NL: "Нидерланды", CN: "Китай", GE: "Грузия"
+  };
+  if (!code || code === "XX" || code === "T1") return "";
+  return m[code] || code;
+}
+
+function peersOf(roomId) {
   const set = rooms.get(roomId);
   if (!set) return [];
-  const names = [];
+  const list = [];
   set.forEach((s) => {
-    if (s.nick) names.push(String(s.nick).slice(0, 32));
+    if (!s.nick) return;
+    const place = s.place || countryName(s.country);
+    list.push({ nick: s.nick, place: place || "" });
   });
-  return names;
+  return list;
+}
+
+function nicksOf(roomId) {
+  return peersOf(roomId).map((p) => (p.place ? p.nick + " · " + p.place : p.nick));
 }
 
 function broadcast(roomId, t, body, except) {
@@ -344,6 +360,7 @@ function handleMessage(ws, raw) {
       if (ws.roomId && rooms.has(ws.roomId)) rooms.get(ws.roomId).delete(ws);
       ws.roomId = room;
       ws.nick = nick;
+      ws.place = String(body.place || ws.place || "").slice(0, 48);
       if (!rooms.has(room)) rooms.set(room, new Set());
       rooms.get(room).add(ws);
       send(ws, "JOINED", {
@@ -351,16 +368,26 @@ function handleMessage(ws, raw) {
         nick,
         peers: rooms.get(room).size,
         names: nicksOf(room),
+        where: peersOf(room),
         history: recent.get(room) || []
       }, msg.id);
-      broadcast(room, "PEERS", { room, count: rooms.get(room).size, names: nicksOf(room) }, null);
+      broadcast(room, "PEERS", { room, count: rooms.get(room).size, names: nicksOf(room), where: peersOf(room) }, null);
+      return;
+    }
+
+    if (t === "PLACE") {
+      ws.place = String(body.place || "").slice(0, 48);
+      if (ws.roomId) {
+        broadcast(ws.roomId, "PEERS", { room: ws.roomId, count: rooms.get(ws.roomId).size, names: nicksOf(ws.roomId), where: peersOf(ws.roomId) }, null);
+      }
+      send(ws, "ACK", { of: msg.id });
       return;
     }
 
     if (t === "LEAVE") {
       if (ws.roomId && rooms.has(ws.roomId)) {
         rooms.get(ws.roomId).delete(ws);
-        broadcast(ws.roomId, "PEERS", { room: ws.roomId, count: rooms.get(ws.roomId).size, names: nicksOf(ws.roomId) }, null);
+        broadcast(ws.roomId, "PEERS", { room: ws.roomId, count: rooms.get(ws.roomId).size, names: nicksOf(ws.roomId), where: peersOf(ws.roomId) }, null);
       }
       ws.roomId = null;
       send(ws, "ACK", { of: msg.id });
@@ -507,9 +534,11 @@ function handleMessage(ws, raw) {
 
 const wss = new WebSocketServer({ server, path: "/ws" });
 
-wss.on("connection", (ws) => {
+wss.on("connection", (ws, req) => {
   ws.hello = false;
   ws.roomId = null;
+  ws.place = "";
+  ws.country = String((req && req.headers && req.headers["cf-ipcountry"]) || "").slice(0, 2);
   ws.nick = "Гость-" + crypto.randomBytes(2).toString("hex");
   ws.on("message", (raw) => handleMessage(ws, raw));
 
@@ -524,7 +553,7 @@ wss.on("connection", (ws) => {
     }
     if (ws.roomId && rooms.has(ws.roomId)) {
       rooms.get(ws.roomId).delete(ws);
-      broadcast(ws.roomId, "PEERS", { room: ws.roomId, count: rooms.get(ws.roomId).size }, null);
+      broadcast(ws.roomId, "PEERS", { room: ws.roomId, count: rooms.get(ws.roomId).size, names: nicksOf(ws.roomId), where: peersOf(ws.roomId) }, null);
     }
   });
 });
