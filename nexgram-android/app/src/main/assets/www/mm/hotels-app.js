@@ -151,6 +151,8 @@ function renderWx(city, f){
   if(!track) return;
   var cur=f.current||{};
   var em=wxEmoji(cur.weather_code);
+  var now=document.getElementById("wxNow");
+  if(now && cur.temperature_2m!=null) now.textContent=em.e+" "+city+" сейчас "+Math.round(cur.temperature_2m)+"°, ощущается "+Math.round(cur.apparent_temperature)+"°, ветер "+Math.round(cur.wind_speed_10m)+" м/с";
   var days=f.daily||{};
   var wd=["вс","пн","вт","ср","чт","пт","сб"];
   var bits=[];
@@ -191,6 +193,8 @@ async function loadWeather(city){
     return;
   }
   box.hidden=false;
+  var now=document.getElementById("wxNow");
+  if(now) now.textContent="Погода "+city+" загружается…";
   track.innerHTML='<span class="wx-item"><span class="wx-e sun">☀️</span> Погода '+city+' · загрузка…</span>';
   if(WX_CACHE[city]){ renderWx(city, WX_CACHE[city]); return; }
   try{

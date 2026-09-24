@@ -340,7 +340,7 @@ const server = http.createServer((req, res) => {
       res.writeHead(code, Object.assign({ "Content-Type": "application/json" }, cors));
       res.end(typeof obj === "string" ? obj : JSON.stringify(obj));
     };
-    if (!city) { sendJson(400, { ok: false }); return; }
+    if (!city) { sendJson(400, { ok: false, why: "empty", url: req.url }); return; }
     const grab = (url) => new Promise((resolve, reject) => {
       const rq = https.get(url, { headers: { "User-Agent": "Radar/1.0" } }, (r) => {
         let buf = "";
@@ -354,13 +354,13 @@ const server = http.createServer((req, res) => {
     grab(geo).then((raw) => {
       let hit = null;
       try { hit = (JSON.parse(raw).results || [])[0]; } catch (e) {}
-      if (!hit) { sendJson(200, { ok: false }); return null; }
+      if (!hit) { sendJson(200, { ok: false, why: "nocity", city: city }); return null; }
       const url = "https://api.open-meteo.com/v1/forecast?latitude=" + hit.latitude + "&longitude=" + hit.longitude + "&current=temperature_2m,weather_code,wind_speed_10m,apparent_temperature&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=4";
       return grab(url);
     }).then((raw) => {
       if (raw == null) return;
       sendJson(200, raw);
-    }).catch(() => sendJson(200, { ok: false }));
+    }).catch((e) => sendJson(200, { ok: false, why: String(e && e.message || e), city: city }));
     return;
   }
   let file = urlPath === "/" ? "/index.html" : urlPath;
@@ -378,7 +378,9 @@ const server = http.createServer((req, res) => {
       res.end("not found");
       return;
     }
-    res.writeHead(200, { "Content-Type": MIME[path.extname(abs)] || "application/octet-stream" });
+    const type = MIME[path.extname(abs)] || "application/octet-stream";
+    const headers = { "Content-Type": type, "Cache-Control": "no-store" };
+    res.writeHead(200, headers);
     res.end(data);
   });
 });
