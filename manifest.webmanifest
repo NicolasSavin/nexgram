@@ -1,0 +1,11 @@
+{
+  "name": "Радар",
+  "short_name": "Радар",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0e1621",
+  "theme_color": "#17212b",
+  "icons": [
+    { "src": "apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}

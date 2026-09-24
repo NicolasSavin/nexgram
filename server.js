@@ -28,7 +28,9 @@ const MIME = {
   ".js": "text/javascript; charset=utf-8",
   ".md": "text/markdown; charset=utf-8",
   ".json": "application/json",
-  ".apk": "application/vnd.android.package-archive"
+  ".apk": "application/vnd.android.package-archive",
+  ".png": "image/png",
+  ".webmanifest": "application/manifest+json"
 };
 
 const rooms = new Map();
