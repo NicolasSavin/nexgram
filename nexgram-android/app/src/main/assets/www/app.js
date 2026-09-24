@@ -726,24 +726,41 @@ async function startLive(nick, roomId, pass) {
   if (here && !nativeOnly) {
     wsUrl = here + "/ws";
   } else if (window.RadarNative && RadarNative.wsOpen) {
-    const base = relay || "http://186.246.3.44";
+    const base = relay || "https://karavanmessage.ru";
     wsUrl = base.replace(/^http/, "ws") + (base.indexOf("/ws") >= 0 ? "" : "/ws");
   } else if (relay) {
     wsUrl = relay.replace(/^http/, "ws") + (relay.includes("/ws") ? "" : "/ws");
   } else {
     throw new Error("Нет адреса реле");
   }
-  const httpBase = (relay || "http://186.246.3.44").replace(/\/ws\/?$/, "");
+  const httpBase = (relay || "https://karavanmessage.ru").replace(/^ws/i, "http").replace(/\/ws\/?$/, "");
   let ws;
-  const useHttp = window.RadarNative && typeof RadarNative.httpReq === "function";
-  if (useHttp) {
-    chat.status = "канал HTTP…";
+  const nativeWs = window.RadarNative && typeof RadarNative.wsOpen === "function";
+  async function openHttp() {
+    chat.status = "канал HTTPS…";
     if (typeof renderList === "function") renderList();
     ws = httpSocket(httpBase);
     await new Promise(function (resolve, reject) {
       const t = setTimeout(function () { reject(new Error("http timeout")); }, 8000);
       ws.onopen = function () { clearTimeout(t); resolve(); };
     });
+  }
+  if (nativeWs) {
+    try {
+      ws = radarSocket(wsUrl);
+      await new Promise(function (resolve, reject) {
+        const t = setTimeout(function () {
+          try { ws.close(); } catch (e) {}
+          reject(new Error("ws timeout"));
+        }, 6000);
+        ws.onopen = function () { clearTimeout(t); resolve(); };
+        ws.onerror = function () { clearTimeout(t); reject(new Error("ws error")); };
+      });
+    } catch (e) {
+      await openHttp();
+    }
+  } else if (window.RadarNative && typeof RadarNative.httpReq === "function") {
+    await openHttp();
   } else {
     try {
       ws = radarSocket(wsUrl);
@@ -751,18 +768,12 @@ async function startLive(nick, roomId, pass) {
         const t = setTimeout(function () {
           try { ws.close(); } catch (e) {}
           reject(new Error("ws timeout"));
-        }, 4000);
+        }, 6000);
         ws.onopen = function () { clearTimeout(t); resolve(); };
         ws.onerror = function () { clearTimeout(t); reject(new Error("ws error")); };
       });
     } catch (e) {
-      chat.status = "канал HTTP…";
-      if (typeof renderList === "function") renderList();
-      ws = httpSocket(httpBase);
-      await new Promise(function (resolve, reject) {
-        const t = setTimeout(function () { reject(new Error("http timeout")); }, 8000);
-        ws.onopen = function () { clearTimeout(t); resolve(); };
-      });
+      await openHttp();
     }
   }
   live.ws = ws;
