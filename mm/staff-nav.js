@@ -8,6 +8,6 @@ var keep=[];
 [].slice.call(nav.querySelectorAll("#who, #addBtn, button")).forEach(function(el){
   keep.push(el);
 });
-nav.innerHTML='<a href="index.html">Маршруты</a><a href="hotels.html">Гостиницы</a><span class="nav-lab">Для работников</span><a href="where.html">Кто где</a><a href="team.html">Чат работников</a><a href="naryad.html">Наряд</a>';
+nav.innerHTML='<a href="index.html">Маршруты</a><a href="hotels.html">Гостиницы</a><span class="nav-lab">Для работников</span><a href="where.html">Кто где</a><a href="team.html">Чат работников</a><a href="naryad.html">Наряд</a><a href="drivers.html">Водители</a>';
 keep.forEach(function(el){ nav.appendChild(el); });
 })();

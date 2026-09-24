@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Водители</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&display=swap" rel="stylesheet">
+<script src="users.js"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Manrope,system-ui,sans-serif;color:#eef3f8;background:#071018}
+.bg{position:fixed;inset:0;z-index:0;background:radial-gradient(1000px 500px at 0% 0%,#1c4f7a,transparent 55%),radial-gradient(800px 400px at 100% 0%,#7a4a18,transparent 50%),#071018}
+.wrap{position:relative;z-index:1;max-width:720px;margin:0 auto;padding:22px 16px 80px}
+.nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.nav a,.btn{color:#f3e0b8;background:rgba(255,255,255,.06);border:1px solid rgba(243,224,184,.18);border-radius:999px;padding:10px 14px;text-decoration:none;font:inherit;cursor:pointer}
+h1{margin:0 0 6px;font-size:32px}.lead{color:#b7c6d6;margin:0 0 12px}
+.card{background:linear-gradient(180deg,rgba(255,255,255,.1),rgba(255,255,255,.04));border:1px solid rgba(255,255,255,.14);border-radius:22px;padding:14px 16px;margin-top:10px}
+.who{font-size:18px;font-weight:800}
+.sub{color:#d4b483;font-size:13px;letter-spacing:.04em;margin-top:2px}
+.phone{margin:6px 0 10px;font-size:16px}
+.acts{display:flex;gap:8px;flex-wrap:wrap}
+.acts a{color:#1a1206;background:linear-gradient(180deg,#f6e2b4,#c8943c);border-radius:999px;padding:10px 14px;text-decoration:none;font-weight:700}
+input{width:100%;padding:12px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:#0b1624;color:#fff;font:inherit;margin-top:8px}
+.err{color:#f3b4b4}
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div id="gate" class="wrap">
+<div class="card" style="max-width:420px;margin:40px auto">
+<h1 style="font-size:28px">Вход</h1>
+<p class="lead">Список только для сотрудников.</p>
+<input id="login" placeholder="Фамилия" autocomplete="username">
+<input id="pass" type="password" placeholder="Пароль" autocomplete="current-password">
+<p class="err" id="err"></p>
+<button class="btn" type="button" style="margin-top:14px" onclick="enter()">Войти</button>
+</div>
+</div>
+<div id="app" class="wrap" style="display:none">
+<div class="nav">
+<a href="index.html">Маршруты</a>
+<a href="hotels.html">Гостиницы</a>
+<span class="nav-lab">Для работников</span>
+<a href="where.html">Кто где</a>
+<a href="team.html">Чат работников</a>
+<a href="naryad.html">Наряд</a>
+<a href="drivers.html">Водители</a>
+<button class="btn" type="button" onclick="out()">Выйти</button>
+</div>
+<h1>Водители</h1>
+<p class="lead">Водители и секционщики. В чат охраны они не входят. Позвонить или написать SMS.</p>
+<div id="list"></div>
+</div>
+<script>
+var KEY="mm_user";
+var PEOPLE=[
+  {name:"Волков Руслан", car:"Газель", phone:"89821252465"},
+  {name:"Макурин Игорь", car:"Хавал", phone:"89048317892"},
+  {name:"Варламов Дмитрий", car:"МАН", phone:"89127533052"},
+  {name:"Пономарев Виктор", car:"Ситрак", phone:"89127652412"},
+  {name:"Яковлев Дмитрий (Митяй)", car:"КАМАЗ", phone:"89199194887"},
+  {name:"Дьяконов Никита", car:"Ситрак", phone:"89829971233"},
+  {name:"Коробейников Иван", car:"", phone:"89124621509", role:"секционщик"},
+  {name:"Королев Сергей (Катастрофа)", car:"Ситрак (не опасник)", phone:"89914563708"},
+  {name:"Косачев Сергей", car:"", phone:"89199107788", role:"секционщик"},
+  {name:"Лямин Иван", car:"", phone:"891276824014", role:"секционщик"}
+];
+function norm(s){return String(s||"").trim().toLowerCase().replace(/ё/g,"е");}
+function user(){
+  try{
+    var h=(location.hash||"").replace(/^#/,"");
+    if(h.indexOf("mm=")==0){
+      var u=JSON.parse(decodeURIComponent(h.slice(3)));
+      if(u&&u.login){ localStorage.setItem(KEY, JSON.stringify(u)); return u; }
+    }
+  }catch(e){}
+  try{return JSON.parse(localStorage.getItem(KEY)||"null");}catch(e){return null;}
+}
+function enter(){
+  var l=norm(document.getElementById("login").value), p=String(document.getElementById("pass").value||"").trim();
+  var u=(window.HOTEL_USERS||[]).find(function(x){return norm(x.login)===l && String(x.pass)===p;});
+  if(!u){document.getElementById("err").textContent="Неверная фамилия или пароль"; return;}
+  localStorage.setItem(KEY, JSON.stringify({login:u.login, admin:!!u.admin, name:u.name||u.login}));
+  show();
+}
+function out(){ localStorage.removeItem(KEY); location.href="drivers.html"; }
+function plus7(p){
+  var d=String(p||"").replace(/\D/g,"");
+  if(d.length===11 && d.charAt(0)==="8") return "+7"+d.slice(1);
+  if(d.length===11 && d.charAt(0)==="7") return "+"+d;
+  return d;
+}
+function draw(){
+  document.getElementById("list").innerHTML=PEOPLE.map(function(p){
+    var tel=plus7(p.phone);
+    var sub=p.car || p.role || "";
+    return "<div class='card'><div class='who'>"+p.name+"</div>"
+      +(sub?"<div class='sub'>"+sub+"</div>":"")
+      +"<div class='phone'>"+p.phone+"</div>"
+      +"<div class='acts'><a href='tel:"+tel+"'>Позвонить</a><a href='sms:"+tel+"'>SMS</a></div></div>";
+  }).join("");
+}
+function show(){
+  document.getElementById("gate").style.display="none";
+  document.getElementById("app").style.display="block";
+  draw();
+}
+if(user()) show();
+</script>
+<script src="staff-nav.js"></script>
+</body>
+</html>
