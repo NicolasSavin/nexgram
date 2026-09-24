@@ -380,12 +380,13 @@ function handleMessage(ws, raw) {
         error(ws, "NOT_IN_ROOM", msg.id);
         return;
       }
-      const owner = floors.get(ws.roomId);
-      if (owner && owner !== ws && owner.readyState === 1) {
+      const cur = floors.get(ws.roomId);
+      const fresh = cur && cur.ws && cur.ws.readyState === 1 && (Date.now() - cur.ts) < 12000;
+      if (fresh && cur.ws !== ws && cur.nick !== ws.nick) {
         error(ws, "PTT_BUSY", msg.id);
         return;
       }
-      floors.set(ws.roomId, ws);
+      floors.set(ws.roomId, { ws: ws, nick: ws.nick, ts: Date.now() });
       broadcast(ws.roomId, "PTT_START", { room: ws.roomId, nick: ws.nick }, null);
       send(ws, "ACK", { of: msg.id });
       return;
@@ -396,10 +397,9 @@ function handleMessage(ws, raw) {
         error(ws, "NOT_IN_ROOM", msg.id);
         return;
       }
-      if (floors.get(ws.roomId) !== ws) {
-        error(ws, "PTT_BUSY", msg.id);
-        return;
-      }
+      const cur = floors.get(ws.roomId);
+      if (!cur || cur.ws !== ws) return;
+      cur.ts = Date.now();
       const packet = {
         room: ws.roomId,
         nick: ws.nick,
@@ -417,7 +417,10 @@ function handleMessage(ws, raw) {
     }
 
     if (t === "PTT_END") {
-      if (ws.roomId && floors.get(ws.roomId) === ws) floors.delete(ws.roomId);
+      if (ws.roomId) {
+        const cur = floors.get(ws.roomId);
+        if (cur && cur.ws === ws) floors.delete(ws.roomId);
+      }
       if (ws.roomId) broadcast(ws.roomId, "PTT_END", { room: ws.roomId, nick: ws.nick }, null);
       send(ws, "ACK", { of: msg.id });
       return;
@@ -474,9 +477,12 @@ wss.on("connection", (ws) => {
   ws.on("message", (raw) => handleMessage(ws, raw));
 
   ws.on("close", () => {
-    if (ws.roomId && floors.get(ws.roomId) === ws) {
-      floors.delete(ws.roomId);
-      broadcast(ws.roomId, "PTT_END", { room: ws.roomId, nick: ws.nick }, null);
+    if (ws.roomId) {
+      const cur = floors.get(ws.roomId);
+      if (cur && cur.ws === ws) {
+        floors.delete(ws.roomId);
+        broadcast(ws.roomId, "PTT_END", { room: ws.roomId, nick: ws.nick }, null);
+      }
     }
     if (ws.roomId && rooms.has(ws.roomId)) {
       rooms.get(ws.roomId).delete(ws);

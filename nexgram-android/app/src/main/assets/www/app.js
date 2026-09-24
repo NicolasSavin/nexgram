@@ -809,6 +809,7 @@ async function startLive(nick, roomId, pass) {
     if (!msg) return;
     if (msg.t === "ERROR") {
       if (typeof PTT !== "undefined") PTT.handle(msg);
+      if (msg.body && msg.body.code === "PTT_BUSY") return;
       chat.status = "ошибка NGP: " + (msg.body && msg.body.code);
       if (isLiveId(state.activeId)) els.convStatus.textContent = chat.status;
       if (msg.body && msg.body.code === "BAD_COMMIT") {

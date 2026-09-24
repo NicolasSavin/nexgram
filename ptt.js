@@ -133,8 +133,7 @@ const PTT = {
       return;
     }
     if (msg.t === "ERROR" && b.code === "PTT_BUSY") {
-      this.status("Канал занят", "live");
-      this.stop();
+      this.status("Канал занят — отпустите и нажмите ещё раз", "live");
       return;
     }
     if (msg.t !== "PTT_CHUNK") return;
@@ -185,12 +184,19 @@ const PTT = {
   function bind(id, video) {
     const btn = document.getElementById(id);
     if (!btn) return;
-    const down = (e) => { e.preventDefault(); PTT.start(video); };
-    const up = (e) => { e.preventDefault(); PTT.stop(); };
+    const down = (e) => {
+      e.preventDefault();
+      try { btn.setPointerCapture(e.pointerId); } catch (err) {}
+      PTT.start(video);
+    };
+    const up = (e) => {
+      e.preventDefault();
+      try { btn.releasePointerCapture(e.pointerId); } catch (err) {}
+      PTT.stop();
+    };
     btn.addEventListener("pointerdown", down);
     btn.addEventListener("pointerup", up);
     btn.addEventListener("pointercancel", up);
-    btn.addEventListener("pointerleave", () => { if (PTT.talking) PTT.stop(); });
   }
   bind("pttBtn", false);
   bind("pttVidBtn", true);
