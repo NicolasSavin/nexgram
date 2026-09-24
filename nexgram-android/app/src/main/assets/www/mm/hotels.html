@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Гостиницы</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&display=swap" rel="stylesheet">
+<script src="users.js"></script>
+<script src="hotels.js"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Manrope,system-ui,sans-serif;color:#eef3f8;background:#071018}
+.bg{position:fixed;inset:0;z-index:0;background:radial-gradient(1000px 500px at 0% 0%,#1c4f7a,transparent 55%),radial-gradient(800px 400px at 100% 0%,#7a4a18,transparent 50%),#071018}
+.wrap{position:relative;z-index:1;max-width:980px;margin:0 auto;padding:28px 18px 64px}
+.nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;gap:8px;flex-wrap:wrap}
+.nav a,.btn{color:#f3e0b8;background:rgba(255,255,255,.06);border:1px solid rgba(243,224,184,.18);border-radius:999px;padding:10px 14px;text-decoration:none;font:inherit;cursor:pointer}
+h1{margin:0 0 8px;font-size:36px}p.lead{color:#b7c6d6;margin:0 0 18px}
+.card{background:linear-gradient(180deg,rgba(255,255,255,.1),rgba(255,255,255,.04));border:1px solid rgba(255,255,255,.14);border-radius:22px;padding:16px}
+input,select{width:100%;padding:13px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:#0b1624;color:#fff;font:inherit;margin-top:8px}
+.filters{display:grid;grid-template-columns:1fr 220px;gap:10px}
+@media(max-width:720px){.filters{grid-template-columns:1fr}}
+table{width:100%;border-collapse:collapse}th{text-align:left;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#d4b483;padding:12px}td{padding:12px;border-top:1px solid rgba(255,255,255,.08)}
+.price{text-align:right;font-weight:700;color:#f3e0b8}
+.name{color:#f3e0b8;cursor:pointer;text-decoration:underline;text-underline-offset:3px;background:none;border:0;font:inherit;padding:0}
+.modal{display:none;position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.7);align-items:center;justify-content:center;padding:16px}
+.modal.show{display:flex}
+.sheet{width:min(560px,100%);max-height:92vh;overflow:auto;background:#0d1a28;border:1px solid rgba(255,255,255,.14);border-radius:22px}
+.sheet img{width:100%;height:220px;object-fit:cover;display:block;background:#123}
+.pad{padding:18px}.pad h2{margin:0 0 8px}.meta{color:#b7c6d6;margin:6px 0;font-size:15px}
+.prices{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.box{padding:12px;border-radius:14px;background:rgba(255,255,255,.05)}
+.box b{display:block;color:#d4b483;font-size:12px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
+.box span{font-size:22px;font-weight:800;color:#f3e0b8}
+#gate{min-height:70vh;display:flex;align-items:center}
+.err{color:#f3b4b4;margin-top:10px}
+label.l{display:block;font-size:12px;color:#d4b483;margin-top:10px}
+.wx{margin:0;overflow:hidden;background:linear-gradient(90deg,rgba(28,79,122,.45),rgba(122,74,24,.28),rgba(28,79,122,.45));border-bottom:1px solid rgba(243,224,184,.2);height:42px;display:flex;align-items:center}
+.wx[hidden]{display:none}
+.wx-track{display:inline-flex;align-items:center;gap:22px;white-space:nowrap;animation:wxrun 28s linear infinite;will-change:transform}
+.wx:hover .wx-track{animation-play-state:paused}
+.wx-item{display:inline-flex;align-items:center;gap:8px;color:#f6e7c6;font-weight:700;font-size:14px;letter-spacing:.02em}
+.wx-sep{opacity:.45;color:#f3e0b8}
+.wx-e{display:inline-block;font-size:22px;line-height:1;transform-origin:center}
+.wx-e.sun{animation:wxspin 5s linear infinite}
+.wx-e.cloud{animation:wxfloat 2.2s ease-in-out infinite}
+.wx-e.rain{animation:wxbounce .65s ease-in-out infinite}
+.wx-e.snow{animation:wxfall 1.5s ease-in-out infinite}
+.wx-e.storm{animation:wxflash .45s ease-in-out infinite}
+.wx-e.fog{animation:wxpulse 1.8s ease-in-out infinite}
+@keyframes wxrun{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@keyframes wxspin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes wxfloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes wxbounce{0%,100%{transform:translateY(0)}50%{transform:translateY(5px)}}
+@keyframes wxfall{0%{transform:translateY(-4px) rotate(-12deg)}50%{transform:translateY(5px) rotate(12deg)}100%{transform:translateY(-4px) rotate(-12deg)}}
+@keyframes wxflash{0%,100%{filter:brightness(1);transform:scale(1)}50%{filter:brightness(1.8);transform:scale(1.18)}}
+@keyframes wxpulse{0%,100%{opacity:.4;transform:scale(.95)}50%{opacity:1;transform:scale(1.08)}}
+
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div id="gate" class="wrap">
+<div class="card" style="max-width:420px;margin:40px auto;width:100%">
+<h1 style="font-size:28px">Вход</h1>
+<p class="lead">Логин — фамилия. Пароль — дата рождения 8 цифр.</p>
+<label class="l">Логин</label><input id="login" autocomplete="username">
+<label class="l">Пароль</label><input id="pass" type="password" autocomplete="current-password">
+<p class="err" id="err"></p>
+<button class="btn" type="button" style="margin-top:14px" onclick="enter()">Войти</button>
+</div>
+</div>
+<div id="app" class="wrap" style="display:none">
+<div class="nav"><a href="index.html">Маршруты</a><a href="hotels.html">Гостиницы</a><span class="nav-lab">Для работников</span><a href="where.html">Кто где</a><a href="team.html">Чат работников</a><a href="radio.html">Рация</a><a href="naryad.html">Наряд</a><span id="who"></span>
+<button class="btn" type="button" id="addBtn" style="display:none" onclick="editHotel(-1)">Добавить</button>
+<button class="btn" type="button" onclick="window.print()">Печать</button>
+<button class="btn" type="button" onclick="out()">Выйти</button></div>
+<h1>Гостиницы</h1>
+<p class="lead">Фильтр по городу и поиск. Нажми на название — карточка. Чат работников — сверху, после входа.</p>
+<p class="lead" id="hereLine" style="margin:0 0 14px"><a href="where.html" style="color:#f3e0b8">Кто где сегодня</a></p>
+<div class="card" style="margin-bottom:14px"><div class="filters">
+<div><label class="l" style="margin-top:0">Поиск</label><input id="q" placeholder="Название или адрес"></div>
+<div><label class="l" style="margin-top:0">Город</label><select id="city"><option value="">Все города</option></select></div>
+</div></div>
+<div class="card" style="padding:6px 8px 10px"><table><thead><tr><th>Название</th><th>Город</th><th>Адрес</th><th class="price">Отчёт, ₽</th><th></th></tr></thead><tbody id="tb"></tbody></table></div>
+</div>
+<div class="modal" id="m" onclick="if(event.target===this)this.classList.remove('show')">
+<div class="sheet">
+<img id="hp" alt="">
+<div class="wx" id="hwx" hidden><div class="wx-track" id="hwxTrack"></div></div>
+<div class="pad">
+<h2 id="hn"></h2>
+<p class="meta" id="hc"></p>
+<p class="meta" id="ha"></p>
+<p class="meta" id="ht"></p>
+<p class="meta" id="hereIn"></p>
+<div class="prices">
+<div class="box"><b>В отчёт</b><span id="hrep"></span></div>
+<div class="box"><b>Проживание</b><span id="hstay"></span></div>
+</div>
+<div style="margin-top:16px"><button class="btn" type="button" onclick="imHere()">Я здесь сегодня</button>
+<button class="btn" type="button" onclick="document.getElementById('m').classList.remove('show')">Закрыть</button>
+<button class="btn" type="button" id="editOpen" style="display:none">Править</button></div>
+</div></div></div>
+<div class="modal" id="ed" onclick="if(event.target===this)this.classList.remove('show')">
+<div class="sheet"><div class="pad">
+<h2 id="edTitle">Гостиница</h2>
+<label class="l">Название</label><input id="en">
+<label class="l">Город</label><input id="ec">
+<label class="l">Адрес</label><input id="ea">
+<label class="l">Телефон</label><input id="et">
+<label class="l">Цена в отчёт</label><input id="ep" type="number">
+<label class="l">Цена проживания</label><input id="es" type="number">
+<label class="l">Фото (URL)</label><input id="ei">
+<div style="margin-top:14px"><button class="btn" type="button" onclick="saveHotel()">Сохранить</button>
+<button class="btn" type="button" onclick="document.getElementById('ed').classList.remove('show')">Отмена</button></div>
+</div></div></div>
+<script src="hotels-app.js?v=2"></script>
+<script src="staff-nav.js"></script>
+<script src="staff-nav.js"></script>
+<script src="team.js?v=3"></script>
+</body></html>

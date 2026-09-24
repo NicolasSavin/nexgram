@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>НТЦ Охрана · ИИ помощник</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
+<script src="users.js"></script>
+<style>
+:root{--gold:#e8c989;--ink:#140f0a;--line:rgba(232,201,137,.18)}
+*{box-sizing:border-box}body{margin:0;font-family:Manrope,system-ui,sans-serif;color:#f3e6d0;background:#120e0a}
+.bg{position:fixed;inset:0;background:radial-gradient(900px 420px at 10% 0%,#3a2a16,transparent 55%),radial-gradient(700px 380px at 100% 0%,#1b140e,transparent),#120e0a}
+.wrap{position:relative;max-width:820px;margin:0 auto;padding:18px 16px 28px;min-height:100vh;display:flex;flex-direction:column}
+.nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.nav a,.ghost{color:var(--gold);border:1px solid var(--line);background:rgba(255,255,255,.04);border-radius:999px;padding:8px 12px;text-decoration:none;font:inherit;cursor:pointer}
+h1{font-family:"Playfair Display",serif;margin:0;font-size:34px}
+.sub{color:#cbb896;margin:6px 0 14px}
+.panel{border:1px solid var(--line);border-radius:22px;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));padding:14px}
+.hat{display:flex;justify-content:space-between;gap:10px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#d4b483}
+.log{min-height:380px;max-height:58vh;overflow:auto;display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.msg{max-width:88%;padding:12px 14px;border-radius:16px;line-height:1.5;white-space:pre-wrap}
+.bot{align-self:flex-start;background:rgba(255,255,255,.06);border:1px solid var(--line)}
+.me{align-self:flex-end;background:linear-gradient(180deg,#f0d7a6,#c4923a);color:var(--ink)}
+.cardx{border:1px solid var(--line);border-radius:14px;padding:10px;margin-top:8px}
+.cardx b{display:block;color:var(--gold);font-size:11px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chips button{cursor:pointer;border:1px solid var(--line);background:transparent;color:#f3e6d0;border-radius:999px;padding:7px 11px;font:inherit}
+.bar{display:flex;gap:8px;margin-top:12px}
+.bar input{flex:1;border:1px solid var(--line);background:#1a140f;color:#fff;border-radius:14px;padding:13px 14px;font:inherit}
+.go{border:0;cursor:pointer;border-radius:14px;padding:13px 16px;font:inherit;font-weight:700;color:var(--ink);background:linear-gradient(180deg,#f0d7a6,#c4923a)}
+.err{color:#f3b4b4}
+input.gate{width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:#1a140f;color:#fff;font:inherit;margin-top:8px}
+.btn{color:var(--gold);border:1px solid var(--line);background:rgba(255,255,255,.04);border-radius:999px;padding:8px 12px;text-decoration:none;font:inherit;cursor:pointer}
+</style></head>
+<body>
+<div class="bg"></div>
+<div id="gate" class="wrap">
+<div class="panel" style="max-width:420px;margin:40px auto;width:100%">
+<h1 style="font-size:28px">Вход</h1>
+<p class="sub">ИИ помощник только для сотрудников.</p>
+<input class="gate" id="login" placeholder="Логин" autocomplete="username">
+<input class="gate" id="pass" type="password" placeholder="Пароль" autocomplete="current-password">
+<p class="err" id="err"></p>
+<button class="btn" type="button" style="margin-top:14px" onclick="enter()">Войти</button>
+</div>
+</div>
+<div id="app" class="wrap" style="display:none">
+<div class="nav">
+<a href="index.html">Маршруты</a>
+<a href="hotels.html">Гостиницы</a>
+<span class="nav-lab">Для работников</span>
+<a href="where.html">Кто где</a>
+<a href="team.html">Чат работников</a>
+<a href="radio.html">Рация</a>
+<a href="naryad.html">Наряд</a>
+<button class="ghost" type="button" onclick="out()">Выйти</button>
+</div>
+<div class="hat"><span>НТЦ ОХРАНА · ведомственная охрана</span><span></span></div>
+<h1>ИИ помощник</h1>
+<p class="sub">Команда охрана грузов. Закон 77-ФЗ, сопровождение, ЧП, документы, маршрут, гостиница. Нет на сайте — ищет в интернете. Билеты здесь не покупают.</p>
+<div class="panel">
+<div class="hat">справка по охране и командировке</div>
+<div class="log" id="log"></div>
+<div class="chips">
+<button type="button" onclick="ask('Что имеет право работник ведомственной охраны по 77-ФЗ')">77-ФЗ права</button>
+<button type="button" onclick="ask('Порядок сопровождения груза в пути')">Охрана груза</button>
+<button type="button" onclick="ask('ЧП в пути: что делать охране')">ЧП в пути</button>
+<button type="button" onclick="ask('Ижевск — Барнаул')">Ижевск — Барнаул</button>
+<button type="button" onclick="ask('Гостиницы')">Гостиницы</button>
+</div>
+<div class="bar"><input id="q" placeholder="груз, 77-ФЗ, маршрут, ЧП, гостинка"><button class="go" type="button" onclick="send()">Спросить</button></div>
+</div>
+</div>
+<script>
+var API="https://functions.yandexcloud.net/d4e5aa975qllld89nvh0";
+function norm(s){return String(s||"").trim().toLowerCase().replace(/ё/g,"е");}
+function add(html, me){
+var d=document.createElement("div"); d.className="msg "+(me?"me":"bot"); d.innerHTML=html; document.getElementById("log").appendChild(d); d.scrollIntoView();
+}
+function brief(q){
+q=norm(q);
+if(/77|ведомствен|прав|обязан/.test(q))
+return "<b>77-ФЗ</b>Ведомственная охрана — закон 14.04.1999 № 77-ФЗ. Права: пропускной режим, проверка документов на объекте, досмотр транспорта, задержание нарушителя и передача в полицию. Сила, спецсредства и оружие — только по закону. Обязанности: охранять объект/груз, при ЧП сообщить в полицию и диспетчеру, рапорт.";
+if(/сопровожд|груз|наряд/.test(q))
+return "<b>ОХРАНА ГРУЗА</b>Ехать по наряду. Удостоверение и документы на груз при себе. Груз без охраны не оставлять. Ночёвка — гостиницы из списка сайта. ЧП — 112 и диспетчер, затем рапорт.";
+if(/чп|тревог|нападен|задержан/.test(q))
+return "<b>ЧП</b>1) Безопасность людей и груза. 2) 112 / полиция. 3) Диспетчер. 4) Не бросать груз без охраны. 5) Рапорт. Оружие — только при нападении, в пределах 77-ФЗ.";
+if(/ижевск|барнаул|агрыз|новосибир/.test(q))
+return "<b>КАРТА МАРШРУТА</b>Ижевск → Барнаул. Прямого поезда часто нет.<div class='cardx'><b>1. Нога</b>Электричка Ижевск → Агрыз</div><div class='cardx'><b>2. Поезд</b>Агрыз → Новосибирск, фильтр купе/нижние</div><div class='cardx'><b>3. Автобус</b>Новосибирск → Барнаул.</div>";
+if(/купе|нижн|мест|вагон/.test(q))
+return "<b>МЕСТА</b>Фильтры: одно купе · только нижние · одно купе и нижние · любые.";
+if(/гостин|отел|дилижан/.test(q))
+return "<b>ГОСТИНИЦА</b>Раздел Гостиницы — фильтр по городу.";
+if(/сапсан|автобус/.test(q))
+return "<b>РЕЙС</b>Фильтр: сапсан · поезд · автобус · поезд+автобус.";
+return "<b>НТЦ ОХРАНА</b>Спросите охрану груза, 77-ФЗ, маршрут, ЧП или гостиницу.";
+}
+function ask(t){ document.getElementById("q").value=t; send(); }
+async function send(){
+var inp=document.getElementById("q"); var q=inp.value.trim(); if(!q) return;
+inp.value=""; add(q.replace(/</g,""), true);
+try{
+var j=await (await fetch(API+"?path=/chat&q="+encodeURIComponent(q))).json();
+if(j && j.text){ add(j.text, false); return; }
+}catch(e){}
+add(brief(q), false);
+}
+function user(){ try{return JSON.parse(localStorage.getItem("mm_user")||"null");}catch(e){return null;} }
+function enter(){
+var l=norm(document.getElementById("login").value), p=String(document.getElementById("pass").value||"").trim();
+var u=(window.HOTEL_USERS||[]).find(function(x){return norm(x.login)===l && String(x.pass)===p;});
+if(!u){document.getElementById("err").textContent="Неверный логин или пароль"; return;}
+localStorage.setItem("mm_user", JSON.stringify({login:u.login, admin:!!u.admin, name:u.name||u.login}));
+show();
+}
+function out(){ localStorage.removeItem("mm_user"); location.reload(); }
+function show(){
+document.getElementById("gate").style.display="none";
+document.getElementById("app").style.display="flex";
+document.getElementById("q").addEventListener("keydown", function(e){ if(e.key==="Enter") send(); });
+add("<b>НТЦ ОХРАНА</b>Помощник ведомственной охраны. Спрашивайте закон, груз, ЧП, маршрут, гостиницу.", false);
+}
+if(user()) show();
+</script>
+<script src="staff-nav.js"></script>
+<script src="team.js?v=3"></script>
+</body></html>

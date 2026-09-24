@@ -1,11 +1,11 @@
 (function () {
-  var SITE = "https://photography-word-essence-knowledge.trycloudflare.com/mm/";
+  var SITE = "mm/";
   var STAFF_ROOM = "smena";
   var STAFF_NGP = "ntc-smena";
   var STAFF_PIN = "охрана";
   var staffOk = false;
   var PAGES = {
-    routes: { url: SITE, name: "Маршруты", color: "#c8943c", initials: "М" },
+    routes: { url: "mm/index.html", name: "Маршруты", color: "#c8943c", initials: "М" },
     hotels: { url: SITE + "hotels.html", name: "Гостиницы", color: "#d4b483", initials: "ГС" },
     where: { url: SITE + "where.html", name: "Кто где", color: "#faa774", initials: "КГ" },
     naryad: { url: "naryad.html", name: "Наряд", color: "#a695e7", initials: "НР" },

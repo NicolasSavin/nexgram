@@ -258,6 +258,7 @@ const server = http.createServer((req, res) => {
   }
   let file = urlPath === "/" ? "/index.html" : urlPath;
   file = path.normalize(file).replace(/^(\.\.[/\\])+/, "");
+  if (file.endsWith("/")) file += "index.html";
   const abs = path.join(ROOT, file);
   if (!abs.startsWith(ROOT)) {
     res.writeHead(403);
