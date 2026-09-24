@@ -5,6 +5,7 @@ const PTT = {
   talking: false,
   video: false,
   sticky: false,
+  chan: 0,
   facing: "environment",
   localChunks: [],
   inbox: {},
@@ -22,7 +23,40 @@ const PTT = {
     el.className = "ptt-status" + (cls ? " " + cls : "");
   },
 
+  chanName(n) {
+    const c = n == null ? this.chan : n;
+    return c ? ("канал " + c) : "общий";
+  },
+
+  setChan(n) {
+    if (this.talking) {
+      this.status("Сначала отпустите рацию", "live");
+      this.paintChan();
+      return;
+    }
+    n = parseInt(n, 10);
+    this.chan = (n >= 1 && n <= 100) ? n : 0;
+    try { localStorage.setItem("radar-chan", String(this.chan)); } catch (e) {}
+    this.paintChan();
+    this.status("Рация · " + this.chanName());
+  },
+
+  paintChan() {
+    const all = document.getElementById("chanAll");
+    const num = document.getElementById("chanNum");
+    if (all) all.classList.toggle("hot", !this.chan);
+    if (num && document.activeElement !== num) num.value = this.chan ? String(this.chan) : "";
+  },
+
+  sameChan(b) {
+    const n = parseInt(b && b.chan, 10);
+    const theirs = (n >= 1 && n <= 100) ? n : 0;
+    return theirs === (this.chan || 0);
+  },
+
   send(t, body) {
+    body = body || {};
+    body.chan = this.chan || 0;
     if (typeof live !== "undefined" && live.enabled && live.ws && live.ws.readyState === 1 && live.inRoom) {
       live.ws.send(JSON.stringify(NGP.frame(t, body)));
       return true;
@@ -193,18 +227,21 @@ const PTT = {
     }
     if (!wasVideo && chunks.length) {
       const blob = new Blob(chunks, { type: this.mime || "audio/webm" });
-      this.keepClip(blob, "me", live && live.nick, "Голосовое");
+      this.keepClip(blob, "me", live && live.nick, "Голосовое · " + this.chanName());
     }
     this.localChunks = [];
     if (this.talking) this.send("PTT_END", { room: live && live.roomId, nick: live && live.nick });
     this.talking = false;
     this.video = false;
     this.sticky = false;
-    this.status("Рация · зажмите PTT или нажмите Видео");
+    this.status("Рация · " + this.chanName());
   },
 
   async handle(msg) {
     const b = msg.body || {};
+    if (msg.t === "PTT_START" || msg.t === "PTT_CHUNK" || msg.t === "PTT_END") {
+      if (!this.sameChan(b)) return;
+    }
     if (msg.t === "PTT_START") {
       if (b.nick === (live && live.nick)) return;
       this.status((b.video ? "Видео: " : "Эфир: ") + (b.nick || "абонент"), "rx");
@@ -216,13 +253,13 @@ const PTT = {
       const bag = this.inbox[b.nick];
       if (bag && bag.parts.length && !bag.video) {
         const blob = new Blob(bag.parts, { type: bag.mime || "audio/webm" });
-        this.keepClip(blob, "them", b.nick, "Голосовое");
+        this.keepClip(blob, "them", b.nick, "Голосовое · " + this.chanName(b.chan));
       }
       if (b.nick) delete this.inbox[b.nick];
       this.show(this.remote(), false);
       const rv = this.remote();
       if (rv) rv.removeAttribute("src");
-      if (!this.talking) this.status("Рация · зажмите PTT или нажмите Видео");
+      if (!this.talking) this.status("Рация · " + this.chanName());
       return;
     }
     if (msg.t === "ERROR" && b.code === "PTT_BUSY") {
@@ -299,4 +336,12 @@ const PTT = {
       PTT.flip();
     });
   }
+  try { PTT.chan = parseInt(localStorage.getItem("radar-chan") || "0", 10) || 0; } catch (e) {}
+  if (PTT.chan < 1 || PTT.chan > 100) PTT.chan = 0;
+  PTT.paintChan();
+  PTT.status("Рация · " + PTT.chanName());
+  const all = document.getElementById("chanAll");
+  const num = document.getElementById("chanNum");
+  if (all) all.addEventListener("click", function () { PTT.setChan(0); });
+  if (num) num.addEventListener("change", function () { PTT.setChan(num.value); });
 })();

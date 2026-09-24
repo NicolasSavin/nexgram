@@ -476,7 +476,17 @@ body {
   user-select: none;
   touch-action: none;
 }
-.ptt-row { display: flex; gap: 18px; align-items: center; justify-content: center; }
+.chan-row { display: flex; gap: 8px; align-items: center; justify-content: center; margin-bottom: 8px; }
+.chan-btn, #chanNum {
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: #243242;
+  color: #eef3f8;
+  font: inherit;
+}
+.chan-btn.hot { background: #2aabee; color: #fff; }
+#chanNum { width: 132px; text-align: center; }
 .ptt-btn.ptt-vid {
   background: radial-gradient(circle at 30% 30%, #c9a227, #8a7014 55%, #5c4a0c);
   box-shadow: 0 8px 20px rgba(201, 162, 39, .35);

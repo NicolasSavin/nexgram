@@ -13,6 +13,14 @@ const MAX = 24 * 1024;
 const MAX_AUDIO = 96 * 1024;
 const FEATURES = ["aes-gcm", "history", "commit", "ptt", "media"];
 const floors = new Map();
+function pttChan(body) {
+  const n = parseInt(body && body.chan, 10);
+  if (!Number.isFinite(n) || n < 1) return 0;
+  return Math.min(100, n);
+}
+function floorKey(roomId, chan) {
+  return roomId + "#" + chan;
+}
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -389,14 +397,16 @@ function handleMessage(ws, raw) {
         error(ws, "NOT_IN_ROOM", msg.id);
         return;
       }
-      const cur = floors.get(ws.roomId);
+      const chan = pttChan(body);
+      const key = floorKey(ws.roomId, chan);
+      const cur = floors.get(key);
       const fresh = cur && cur.ws && cur.ws.readyState === 1 && (Date.now() - cur.ts) < 12000;
       if (fresh && cur.ws !== ws && cur.nick !== ws.nick) {
         error(ws, "PTT_BUSY", msg.id);
         return;
       }
-      floors.set(ws.roomId, { ws: ws, nick: ws.nick, ts: Date.now() });
-      broadcast(ws.roomId, "PTT_START", { room: ws.roomId, nick: ws.nick }, null);
+      floors.set(key, { ws: ws, nick: ws.nick, ts: Date.now(), chan: chan });
+      broadcast(ws.roomId, "PTT_START", { room: ws.roomId, nick: ws.nick, video: !!body.video, chan: chan }, null);
       send(ws, "ACK", { of: msg.id });
       return;
     }
@@ -406,12 +416,15 @@ function handleMessage(ws, raw) {
         error(ws, "NOT_IN_ROOM", msg.id);
         return;
       }
-      const cur = floors.get(ws.roomId);
+      const chan = pttChan(body);
+      const cur = floors.get(floorKey(ws.roomId, chan));
       if (!cur || cur.ws !== ws) return;
       cur.ts = Date.now();
       const packet = {
         room: ws.roomId,
         nick: ws.nick,
+        chan: chan,
+        video: !!body.video,
         seq: Number(body.seq) || 0,
         mime: String(body.mime || "audio/webm").slice(0, 40),
         iv: String(body.iv || "").slice(0, 64),
@@ -427,10 +440,12 @@ function handleMessage(ws, raw) {
 
     if (t === "PTT_END") {
       if (ws.roomId) {
-        const cur = floors.get(ws.roomId);
-        if (cur && cur.ws === ws) floors.delete(ws.roomId);
+        const chan = pttChan(body);
+        const key = floorKey(ws.roomId, chan);
+        const cur = floors.get(key);
+        if (cur && cur.ws === ws) floors.delete(key);
+        broadcast(ws.roomId, "PTT_END", { room: ws.roomId, nick: ws.nick, chan: chan }, null);
       }
-      if (ws.roomId) broadcast(ws.roomId, "PTT_END", { room: ws.roomId, nick: ws.nick }, null);
       send(ws, "ACK", { of: msg.id });
       return;
     }
@@ -500,10 +515,11 @@ wss.on("connection", (ws) => {
 
   ws.on("close", () => {
     if (ws.roomId) {
-      const cur = floors.get(ws.roomId);
-      if (cur && cur.ws === ws) {
-        floors.delete(ws.roomId);
-        broadcast(ws.roomId, "PTT_END", { room: ws.roomId, nick: ws.nick }, null);
+      for (const [key, cur] of floors) {
+        if (cur && cur.ws === ws) {
+          floors.delete(key);
+          broadcast(ws.roomId, "PTT_END", { room: ws.roomId, nick: ws.nick, chan: cur.chan || 0 }, null);
+        }
       }
     }
     if (ws.roomId && rooms.has(ws.roomId)) {
