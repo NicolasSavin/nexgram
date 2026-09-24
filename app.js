@@ -344,11 +344,13 @@ function renderMessages(chat) {
     if (m.voice) {
       const box = document.createElement("div");
       box.className = "voice-msg";
-      const play = document.createElement("button");
-      play.type = "button";
-      play.textContent = "▶ голос";
-      play.addEventListener("click", () => new Audio(m.voice).play());
-      box.appendChild(play);
+      const player = document.createElement("audio");
+      player.controls = true;
+      player.preload = "auto";
+      player.src = m.voice;
+      player.style.width = "220px";
+      player.style.height = "36px";
+      box.appendChild(player);
       el.querySelector(".text").after(box);
     }
     if (m.image) {

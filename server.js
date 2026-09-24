@@ -530,6 +530,7 @@ function handleMessage(ws, raw) {
         chan: chan,
         video: !!body.video,
         seq: Number(body.seq) || 0,
+        clip: body.clip ? 1 : 0,
         mime: String(body.mime || "audio/webm").slice(0, 40),
         iv: String(body.iv || "").slice(0, 64),
         data: String(body.data || "").slice(0, 90000)

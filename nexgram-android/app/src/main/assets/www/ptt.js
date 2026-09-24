@@ -132,6 +132,8 @@ const PTT = {
     if (this.video) opts.videoBitsPerSecond = 180000;
     else opts.audioBitsPerSecond = 24000;
     this.rec = new MediaRecorder(this.stream, opts);
+    this.localChunks = [];
+    this.archiveChunks = [];
     this.rec.ondataavailable = async (ev) => {
       if (!ev.data || ev.data.size < 12) return;
       if (!this.video) this.localChunks.push(ev.data);
@@ -150,6 +152,18 @@ const PTT = {
       }
     };
     this.rec.start(this.video ? 500 : 400);
+    if (!this.video) {
+      try {
+        this.archive = new MediaRecorder(this.stream, { mimeType: this.mime, audioBitsPerSecond: 24000 });
+        const self = this;
+        this.archive.ondataavailable = function (ev) {
+          if (ev.data && ev.data.size > 12) self.archiveChunks.push(ev.data);
+        };
+        this.archive.start();
+      } catch (e) {
+        this.archive = null;
+      }
+    }
     const flip = document.getElementById("pttFlipBtn");
     if (flip) flip.textContent = this.facing === "user" ? "Тыл" : "Фронт";
   },
@@ -239,22 +253,55 @@ const PTT = {
     const prev = this.preview();
     if (prev) { prev.srcObject = null; this.show(prev, false); }
     const self = this;
-    const finish = function () {
+    const finish = async function () {
       if (self.stream) {
         self.stream.getTracks().forEach((t) => t.stop());
         self.stream = null;
       }
-      if (!wasVideo && self.localChunks && self.localChunks.length) {
-        const blob = new Blob(self.localChunks, { type: self.mime || "audio/webm" });
-        self.keepClip(blob, "me", live && live.nick, label);
+      let blob = null;
+      if (!wasVideo && self.archiveChunks && self.archiveChunks.length) {
+        blob = new Blob(self.archiveChunks, { type: self.mime || "audio/webm" });
+      } else if (!wasVideo && self.localChunks && self.localChunks.length) {
+        blob = new Blob(self.localChunks, { type: self.mime || "audio/webm" });
       }
+      self.archiveChunks = [];
       self.localChunks = [];
+      if (blob) {
+        self.keepClip(blob, "me", live && live.nick, label);
+        try {
+          if (blob.size < 60000 && live.enabled && LiveCrypto.key) {
+            const packet = await LiveCrypto.encryptBytes(new Uint8Array(await blob.arrayBuffer()));
+            self.send("PTT_CHUNK", {
+              room: live && live.roomId,
+              nick: live && live.nick,
+              seq: 0,
+              clip: 1,
+              mime: self.mime,
+              video: false,
+              ...packet
+            });
+          }
+        } catch (e) {}
+      }
+      if (wasTalking) self.send("PTT_END", { room: live && live.roomId, nick: live && live.nick });
     };
-    if (rec && rec.state !== "inactive") {
-      rec.onstop = finish;
-      try { rec.stop(); } catch (e) { finish(); }
-    } else finish();
-    if (this.talking) this.send("PTT_END", { room: live && live.roomId, nick: live && live.nick });
+    const wasTalking = this.talking;
+    const arch = this.archive;
+    this.archive = null;
+    const wait = { rec: !(rec && rec.state !== "inactive"), arch: !(arch && arch.state !== "inactive") };
+    const ready = function () {
+      if (!wait.rec || !wait.arch) return;
+      finish();
+    };
+    if (!wait.arch) {
+      arch.onstop = function () { wait.arch = true; ready(); };
+      try { arch.stop(); } catch (e) { wait.arch = true; ready(); }
+    }
+    if (!wait.rec) {
+      rec.onstop = function () { wait.rec = true; ready(); };
+      try { rec.stop(); } catch (e) { wait.rec = true; ready(); }
+    }
+    ready();
     this.talking = false;
     this.video = false;
     this.sticky = false;
@@ -274,8 +321,9 @@ const PTT = {
     }
     if (msg.t === "PTT_END") {
       const bag = b.nick && this.inbox[b.nick];
-      if (bag && bag.parts.length && !bag.video) {
-        const blob = new Blob(bag.parts, { type: bag.mime || "audio/webm" });
+      if (bag && !bag.saved && bag.parts.length && !bag.video) {
+        bag.parts.sort(function (a, c) { return a.seq - c.seq; });
+        const blob = new Blob(bag.parts.map(function (p) { return p.raw; }), { type: bag.mime || "audio/webm" });
         this.keepClip(blob, "them", b.nick, "Голосовое · " + this.chanName(b.chan));
       }
       if (b.nick) delete this.inbox[b.nick];
@@ -297,11 +345,16 @@ const PTT = {
     const raw = await LiveCrypto.decryptBytes(b.iv, b.data);
     if (!raw) return;
     const isVid = !!(b.video || (b.mime && String(b.mime).indexOf("video/") === 0));
-    if (!this.inbox[b.nick]) this.inbox[b.nick] = { parts: [], mime: b.mime, video: isVid };
+    if (!this.inbox[b.nick]) this.inbox[b.nick] = { parts: [], mime: b.mime, video: isVid, saved: false };
     const bag = this.inbox[b.nick];
+    if (b.clip) {
+      bag.saved = true;
+      this.keepClip(new Blob([raw], { type: b.mime || "audio/webm" }), "them", b.nick, "Голосовое · " + this.chanName(b.chan));
+      return;
+    }
     bag.video = bag.video || isVid;
     bag.mime = b.mime || bag.mime;
-    bag.parts.push(new Blob([raw], { type: b.mime || "application/octet-stream" }));
+    bag.parts.push({ seq: Number(b.seq) || 0, raw: new Blob([raw], { type: b.mime || "audio/webm" }) });
     if (!mine) return;
     const blob = new Blob([raw], { type: b.mime || (isVid ? "video/webm" : "audio/webm") });
     const url = URL.createObjectURL(blob);
