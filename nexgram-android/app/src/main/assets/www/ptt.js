@@ -230,25 +230,30 @@ const PTT = {
   },
 
   stop() {
-    const chunks = this.localChunks || [];
     const wasVideo = this.video;
+    const label = "Голосовое · " + this.chanName();
     document.getElementById("pttBtn") && document.getElementById("pttBtn").classList.remove("hot");
     document.getElementById("pttVidBtn") && document.getElementById("pttVidBtn").classList.remove("hot");
-    if (this.rec && this.rec.state !== "inactive") {
-      try { this.rec.stop(); } catch (e) {}
-    }
+    const rec = this.rec;
     this.rec = null;
     const prev = this.preview();
     if (prev) { prev.srcObject = null; this.show(prev, false); }
-    if (this.stream) {
-      this.stream.getTracks().forEach((t) => t.stop());
-      this.stream = null;
-    }
-    if (!wasVideo && chunks.length) {
-      const blob = new Blob(chunks, { type: this.mime || "audio/webm" });
-      this.keepClip(blob, "me", live && live.nick, "Голосовое · " + this.chanName());
-    }
-    this.localChunks = [];
+    const self = this;
+    const finish = function () {
+      if (self.stream) {
+        self.stream.getTracks().forEach((t) => t.stop());
+        self.stream = null;
+      }
+      if (!wasVideo && self.localChunks && self.localChunks.length) {
+        const blob = new Blob(self.localChunks, { type: self.mime || "audio/webm" });
+        self.keepClip(blob, "me", live && live.nick, label);
+      }
+      self.localChunks = [];
+    };
+    if (rec && rec.state !== "inactive") {
+      rec.onstop = finish;
+      try { rec.stop(); } catch (e) { finish(); }
+    } else finish();
     if (this.talking) this.send("PTT_END", { room: live && live.roomId, nick: live && live.nick });
     this.talking = false;
     this.video = false;
@@ -258,10 +263,9 @@ const PTT = {
 
   async handle(msg) {
     const b = msg.body || {};
-    if (msg.t === "PTT_START" || msg.t === "PTT_CHUNK" || msg.t === "PTT_END") {
-      if (!this.sameChan(b)) return;
-    }
+    const mine = this.sameChan(b);
     if (msg.t === "PTT_START") {
+      if (!mine) return;
       if (b.nick === (live && live.nick)) return;
       this.status((b.video ? "Видео: " : "Эфир: ") + (b.nick || "абонент"), "rx");
       if (window.RadarLive) RadarLive.notify(b.nick || "Рация", b.video ? "Видео в эфире" : "Говорит в эфире");
@@ -269,16 +273,18 @@ const PTT = {
       return;
     }
     if (msg.t === "PTT_END") {
-      const bag = this.inbox[b.nick];
+      const bag = b.nick && this.inbox[b.nick];
       if (bag && bag.parts.length && !bag.video) {
         const blob = new Blob(bag.parts, { type: bag.mime || "audio/webm" });
         this.keepClip(blob, "them", b.nick, "Голосовое · " + this.chanName(b.chan));
       }
       if (b.nick) delete this.inbox[b.nick];
-      this.show(this.remote(), false);
-      const rv = this.remote();
-      if (rv) rv.removeAttribute("src");
-      if (!this.talking) this.status("Рация · " + this.chanName());
+      if (mine) {
+        this.show(this.remote(), false);
+        const rv = this.remote();
+        if (rv) rv.removeAttribute("src");
+        if (!this.talking) this.status("Рация · " + this.chanName());
+      }
       return;
     }
     if (msg.t === "ERROR" && b.code === "PTT_BUSY") {
@@ -296,6 +302,7 @@ const PTT = {
     bag.video = bag.video || isVid;
     bag.mime = b.mime || bag.mime;
     bag.parts.push(new Blob([raw], { type: b.mime || "application/octet-stream" }));
+    if (!mine) return;
     const blob = new Blob([raw], { type: b.mime || (isVid ? "video/webm" : "audio/webm") });
     const url = URL.createObjectURL(blob);
     this.playQ = this.playQ.then(() => this.play(url, isVid)).catch(() => {});
