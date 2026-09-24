@@ -1,7 +1,7 @@
 /**
  * Karavan relay — NGP/1
  */
-const http = require("http");
+const https = require("https");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
@@ -331,6 +331,35 @@ const server = http.createServer((req, res) => {
     }
     res.writeHead(405, cors);
     res.end();
+    return;
+  }
+  if (urlPath === "/weather") {
+    const city = String(new URL(req.url, "http://127.0.0.1").searchParams.get("city") || "").slice(0, 80);
+    const sendJson = (code, obj) => {
+      res.writeHead(code, Object.assign({ "Content-Type": "application/json" }, cors));
+      res.end(typeof obj === "string" ? obj : JSON.stringify(obj));
+    };
+    if (!city) { sendJson(400, { ok: false }); return; }
+    const grab = (url) => new Promise((resolve, reject) => {
+      const rq = https.get(url, { headers: { "User-Agent": "Radar/1.0" } }, (r) => {
+        let buf = "";
+        r.on("data", (c) => { buf += c; if (buf.length > 200000) r.destroy(); });
+        r.on("end", () => resolve(buf));
+      });
+      rq.setTimeout(8000, () => { rq.destroy(); reject(new Error("timeout")); });
+      rq.on("error", reject);
+    });
+    const geo = "https://geocoding-api.open-meteo.com/v1/search?count=1&language=ru&name=" + encodeURIComponent(city);
+    grab(geo).then((raw) => {
+      let hit = null;
+      try { hit = (JSON.parse(raw).results || [])[0]; } catch (e) {}
+      if (!hit) { sendJson(200, { ok: false }); return null; }
+      const url = "https://api.open-meteo.com/v1/forecast?latitude=" + hit.latitude + "&longitude=" + hit.longitude + "&current=temperature_2m,weather_code,wind_speed_10m,apparent_temperature&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=4";
+      return grab(url);
+    }).then((raw) => {
+      if (raw == null) return;
+      sendJson(200, raw);
+    }).catch(() => sendJson(200, { ok: false }));
     return;
   }
   let file = urlPath === "/" ? "/index.html" : urlPath;

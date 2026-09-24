@@ -163,6 +163,25 @@ function renderWx(city, f){
   var html=bits.join('<span class="wx-sep">✦</span>')+'<span class="wx-sep">✦</span>';
   track.innerHTML=html+html;
 }
+function wxFetch(city){
+  var bases=["","https://photography-word-essence-knowledge.trycloudflare.com","http://186.246.3.44"];
+  var i=0;
+  function one(){
+    if(i>=bases.length) return Promise.reject(new Error("wx"));
+    var base=bases[i++];
+    var ctrl=typeof AbortController!=="undefined"?new AbortController():null;
+    var t=ctrl?setTimeout(function(){ try{ctrl.abort();}catch(e){} }, 8000):null;
+    return fetch(base+"/weather?city="+encodeURIComponent(city),{cache:"no-store",signal:ctrl?ctrl.signal:undefined}).then(function(r){
+      if(t) clearTimeout(t);
+      if(!r.ok) throw new Error("bad");
+      return r.json();
+    }).then(function(j){
+      if(!j||!j.current) throw new Error("empty");
+      return j;
+    }).catch(function(){ if(t) clearTimeout(t); return one(); });
+  }
+  return one();
+}
 async function loadWeather(city){
   var box=document.getElementById("hwx");
   var track=document.getElementById("hwxTrack");
@@ -172,14 +191,10 @@ async function loadWeather(city){
     return;
   }
   box.hidden=false;
-  track.innerHTML='<span class="wx-item"><span class="wx-e sun">☀️</span> Погода '+city+' · загрузка…</span><span class="wx-item"><span class="wx-e sun">☀️</span> Погода '+city+' · загрузка…</span>';
+  track.innerHTML='<span class="wx-item"><span class="wx-e sun">☀️</span> Погода '+city+' · загрузка…</span>';
   if(WX_CACHE[city]){ renderWx(city, WX_CACHE[city]); return; }
   try{
-    var g=await (await fetch("https://geocoding-api.open-meteo.com/v1/search?name="+encodeURIComponent(city)+"&count=1&language=ru&country=RU")).json();
-    var r=(g.results&&g.results[0]);
-    if(!r){ track.innerHTML='<span class="wx-item">Погода: '+city+' не найден</span>'; return; }
-    var url="https://api.open-meteo.com/v1/forecast?latitude="+r.latitude+"&longitude="+r.longitude+"&current=temperature_2m,weather_code,wind_speed_10m,apparent_temperature&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=4";
-    var f=await (await fetch(url)).json();
+    var f=await wxFetch(city);
     WX_CACHE[city]=f;
     renderWx(city,f);
   }catch(e){
