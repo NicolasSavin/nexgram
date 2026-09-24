@@ -117,6 +117,22 @@ class MainActivity : AppCompatActivity() {
                 }
                 return null
             }
+            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                val uri = request.url ?: return false
+                val host = uri.host ?: return false
+                val inside = host == "appassets.androidplatform.net" ||
+                    host.endsWith("trycloudflare.com") ||
+                    host == "karavanmessage.ru" ||
+                    host == "186.246.3.44" ||
+                    host.endsWith("github.io") ||
+                    host.endsWith("jsdelivr.net")
+                if (inside) return false
+                if (!request.isForMainFrame) return false
+                try {
+                    startActivity(Intent(Intent.ACTION_VIEW, uri))
+                } catch (_: Exception) {}
+                return true
+            }
             override fun onPageFinished(view: WebView, url: String) {
                 injectRelay()
             }
@@ -193,6 +209,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     inner class RadarBridge {
+        @JavascriptInterface
+        fun openExternal(url: String) {
+            runOnUiThread {
+                try {
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                } catch (_: Exception) {}
+            }
+        }
         @JavascriptInterface
         fun notify(title: String, body: String) {
             runOnUiThread { showMsg(title, body) }

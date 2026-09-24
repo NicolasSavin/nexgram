@@ -22,8 +22,16 @@ var dt=d && d.indexOf("-")>=0 ? d.split("-").reverse().join(".") : d;
 var num=encodeURIComponent(x.number||"");
 return "https://pass.rzd.ru/tickets/public/ru?STRUCTURE_ID=735&layer_id=5371&dir=0&tfl=3&checkSeats=1&st0="+encodeURIComponent(fr)+"&st1="+encodeURIComponent(to)+"&dt0="+encodeURIComponent(dt)+(num?("&tn="+num):"");
 }
+function openOut(e, href){
+  if (window.RadarNative && RadarNative.openExternal) {
+    if (e && e.preventDefault) e.preventDefault();
+    RadarNative.openExternal(href);
+    return false;
+  }
+  return true;
+}
 function rzdBtn(x){
-return "<a class='mapbtn' style='text-decoration:none;margin-left:8px' target='_blank' rel='noopener' href='"+rzdUrl(x)+"'>Открыть в РЖД</a>";
+return "<a class='mapbtn' style='text-decoration:none;margin-left:8px' target='_blank' rel='noopener' href='"+rzdUrl(x)+"' onclick='return openOut(event, this.href)'>Открыть в РЖД</a>";
 }
 (function(){
 if(typeof card!=="function") return;
