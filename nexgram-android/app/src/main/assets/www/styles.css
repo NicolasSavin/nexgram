@@ -96,6 +96,7 @@ body {
 }
 
 #clearMine { width: auto; padding: 0 10px; border-radius: 12px; font-size: 13px; color: #f3b4b4; }
+.icon-btn {
   background: none;
   border: none;
   color: var(--muted);
