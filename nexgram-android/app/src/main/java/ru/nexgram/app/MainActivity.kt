@@ -176,26 +176,104 @@ class MainActivity : AppCompatActivity() {
         checkUpdate()
     }
 
+    private var pendingApk: java.io.File? = null
+
     private fun checkUpdate() {
         val current = try {
-            packageManager.getPackageInfo(packageName, 0).versionCode
-        } catch (_: Exception) { 7 }
+            if (Build.VERSION.SDK_INT >= 28) {
+                packageManager.getPackageInfo(packageName, 0).longVersionCode.toInt()
+            } else {
+                @Suppress("DEPRECATION")
+                packageManager.getPackageInfo(packageName, 0).versionCode
+            }
+        } catch (_: Exception) { 0 }
         thread {
             try {
-                val raw = URL("https://nicolassavin.github.io/nexgram/version.json").readText()
+                val bases = listOf(
+                    "https://photography-word-essence-knowledge.trycloudflare.com",
+                    "http://186.246.3.44"
+                )
+                var raw = ""
+                for (b in bases) {
+                    try {
+                        raw = URL("$b/version.json").readText()
+                        if (raw.contains("versionCode")) break
+                    } catch (_: Exception) {}
+                }
+                if (!raw.contains("versionCode")) return@thread
                 val j = JSONObject(raw)
                 val remote = j.optInt("versionCode", 0)
                 val name = j.optString("versionName", "")
-                if (remote > current) {
+                val file = j.optString("file", "")
+                if (remote > current && file.endsWith(".apk")) {
                     runOnUiThread {
                         AlertDialog.Builder(this)
-                            .setTitle("Радар")
-                            .setMessage("Доступна версия $name")
-                            .setPositiveButton("OK", null)
+                            .setTitle("Есть обновление")
+                            .setMessage("Радар $name. Старое удалять не нужно: оно заменится само. Один раз нажмите «Установить».")
+                            .setPositiveButton("Обновить") { _, _ -> downloadAndInstall(file) }
+                            .setNegativeButton("Позже", null)
                             .show()
                     }
                 }
-            } catch (_: Exception) { }
+            } catch (_: Exception) {}
+        }
+    }
+
+    private fun downloadAndInstall(fileName: String) {
+        val dlg = AlertDialog.Builder(this).setTitle("Радар").setMessage("Скачиваю обновление…").setCancelable(false).show()
+        thread {
+            var saved: java.io.File? = null
+            val bases = listOf(
+                "https://photography-word-essence-knowledge.trycloudflare.com",
+                "http://186.246.3.44"
+            )
+            for (b in bases) {
+                try {
+                    val dir = java.io.File(cacheDir, "apk")
+                    dir.mkdirs()
+                    val out = java.io.File(dir, "radar-update.apk")
+                    URL("$b/$fileName").openStream().use { input ->
+                        out.outputStream().use { input.copyTo(it) }
+                    }
+                    if (out.length() > 100000) { saved = out; break }
+                } catch (_: Exception) {}
+            }
+            val apk = saved
+            runOnUiThread {
+                try { dlg.dismiss() } catch (_: Exception) {}
+                if (apk == null) {
+                    AlertDialog.Builder(this).setMessage("Не скачалось. Откройте сайт и нажмите синюю кнопку.").setPositiveButton("OK", null).show()
+                } else installApk(apk)
+            }
+        }
+    }
+
+    private fun installApk(file: java.io.File) {
+        if (Build.VERSION.SDK_INT >= 26 && !packageManager.canRequestPackageInstalls()) {
+            pendingApk = file
+            AlertDialog.Builder(this)
+                .setTitle("Разрешите установку")
+                .setMessage("Включите «Разрешить из этого источника» для Радара и вернитесь сюда.")
+                .setPositiveButton("Открыть") { _, _ ->
+                    startActivity(Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
+                }
+                .show()
+            return
+        }
+        val uri = androidx.core.content.FileProvider.getUriForFile(this, "$packageName.fileprovider", file)
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, "application/vnd.android.package-archive")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        startActivity(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        val apk = pendingApk
+        if (apk != null && Build.VERSION.SDK_INT >= 26 && packageManager.canRequestPackageInstalls()) {
+            pendingApk = null
+            installApk(apk)
         }
     }
 

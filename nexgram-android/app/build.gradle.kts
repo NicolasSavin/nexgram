@@ -9,11 +9,23 @@ android {
         applicationId = "ru.nexgram.app"
         minSdk = 24
         targetSdk = 35
-        versionCode = 108
-        versionName = "1.0.8"
+        versionCode = 109
+        versionName = "1.0.9"
+    }
+    signingConfigs {
+        create("radar") {
+            storeFile = file("../radar.jks")
+            storePassword = "radar-radar"
+            keyAlias = "radar"
+            keyPassword = "radar-radar"
+        }
     }
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("radar")
+        }
         release {
+            signingConfig = signingConfigs.getByName("radar")
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
