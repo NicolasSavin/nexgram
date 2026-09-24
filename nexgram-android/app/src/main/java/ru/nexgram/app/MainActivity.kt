@@ -173,12 +173,12 @@ class MainActivity : AppCompatActivity() {
         }
 
         web.loadUrl("https://appassets.androidplatform.net/assets/www/index.html")
-        checkUpdate()
+        checkUpdate(false)
     }
 
     private var pendingApk: java.io.File? = null
 
-    private fun checkUpdate() {
+    private fun checkUpdate(manual: Boolean = false) {
         val current = try {
             if (Build.VERSION.SDK_INT >= 28) {
                 packageManager.getPackageInfo(packageName, 0).longVersionCode.toInt()
@@ -196,11 +196,16 @@ class MainActivity : AppCompatActivity() {
                 var raw = ""
                 for (b in bases) {
                     try {
-                        raw = URL("$b/version.json").readText()
+                        raw = httpGet("$b/version.json")
                         if (raw.contains("versionCode")) break
                     } catch (_: Exception) {}
                 }
-                if (!raw.contains("versionCode")) return@thread
+                if (!raw.contains("versionCode")) {
+                    if (manual) runOnUiThread {
+                        AlertDialog.Builder(this).setMessage("Сервер обновления не ответил.").setPositiveButton("OK", null).show()
+                    }
+                    return@thread
+                }
                 val j = JSONObject(raw)
                 val remote = j.optInt("versionCode", 0)
                 val name = j.optString("versionName", "")
@@ -209,10 +214,14 @@ class MainActivity : AppCompatActivity() {
                     runOnUiThread {
                         AlertDialog.Builder(this)
                             .setTitle("Есть обновление")
-                            .setMessage("Радар $name. Старое удалять не нужно: оно заменится само. Один раз нажмите «Установить».")
+                            .setMessage("Радар $name. Старое удалять не нужно. Нажмите «Установить».")
                             .setPositiveButton("Обновить") { _, _ -> downloadAndInstall(file) }
                             .setNegativeButton("Позже", null)
                             .show()
+                    }
+                } else if (manual) {
+                    runOnUiThread {
+                        AlertDialog.Builder(this).setMessage("Уже последняя версия.").setPositiveButton("OK", null).show()
                     }
                 }
             } catch (_: Exception) {}
@@ -232,8 +241,13 @@ class MainActivity : AppCompatActivity() {
                     val dir = java.io.File(cacheDir, "apk")
                     dir.mkdirs()
                     val out = java.io.File(dir, "radar-update.apk")
-                    URL("$b/$fileName").openStream().use { input ->
-                        out.outputStream().use { input.copyTo(it) }
+                    val req = Request.Builder().url("$b/$fileName")
+                        .header("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/120.0.0.0 Mobile Safari/537.36")
+                        .build()
+                    httpClient.newCall(req).execute().use { resp ->
+                        if (!resp.isSuccessful) return@use
+                        val body = resp.body ?: return@use
+                        out.outputStream().use { body.byteStream().copyTo(it) }
                     }
                     if (out.length() > 100000) { saved = out; break }
                 } catch (_: Exception) {}
@@ -317,6 +331,16 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun httpGet(url: String): String {
+        val req = Request.Builder().url(url)
+            .header("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/120.0.0.0 Mobile Safari/537.36")
+            .build()
+        httpClient.newCall(req).execute().use { resp ->
+            if (!resp.isSuccessful) throw RuntimeException("bad")
+            return resp.body?.string() ?: ""
+        }
+    }
+
     private fun injectRelay() {
         val ver = try {
             packageManager.getPackageInfo(packageName, 0).versionName ?: ""
@@ -336,6 +360,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     inner class RadarBridge {
+        @JavascriptInterface
+        fun updateApp() {
+            runOnUiThread { checkUpdate(true) }
+        }
         @JavascriptInterface
         fun openRzd() {
             runOnUiThread {

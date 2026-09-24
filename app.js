@@ -557,6 +557,10 @@ document.getElementById("drawer").addEventListener("click", (e) => {
     else alert("Комнаты:\n" + list.map(function (r) { return r.room + (r.nick ? " · " + r.nick : ""); }).join("\n") + "\n\nОни же в списке слева. Нажмите, чтобы войти снова.");
   }
   if (action === "new") newChat();
+  if (action === "update") {
+    if (window.RadarNative && RadarNative.updateApp) RadarNative.updateApp();
+    else location.href = "/Radar-1.0.11.apk";
+  }
   if (action === "theme") toggleTheme();
   if (action === "reset") resetDemo();
 });
