@@ -227,6 +227,49 @@ const server = http.createServer((req, res) => {
     res.end();
     return;
   }
+  if (urlPath === "/here") {
+    const HERE_FILE = path.join(ROOT, "here.json");
+    const today = new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10);
+    const loadH = () => {
+      let data = { date: today, people: [] };
+      try { data = JSON.parse(fs.readFileSync(HERE_FILE, "utf8")); } catch (e) {}
+      if (!data || data.date !== today) data = { date: today, people: [] };
+      data.people = Array.isArray(data.people) ? data.people : [];
+      return data;
+    };
+    const saveH = (d) => { try { fs.writeFileSync(HERE_FILE, JSON.stringify(d)); } catch (e) {} };
+    const q = new URL(req.url, "http://127.0.0.1").searchParams;
+    if (req.method === "GET" && q.get("action") === "set") {
+      const data = loadH();
+      const login = String(q.get("login") || "").slice(0, 64);
+      const hotel = String(q.get("hotel") || "").slice(0, 120);
+      data.people = data.people.filter((p) => p.login !== login);
+      if (login && hotel) {
+        data.people.push({
+          login: login,
+          name: String(q.get("name") || login).slice(0, 80),
+          hotel: hotel,
+          city: String(q.get("city") || "").slice(0, 80),
+          date: today,
+          ts: Math.floor(Date.now() / 1000)
+        });
+      }
+      data.date = today;
+      saveH(data);
+      res.writeHead(200, Object.assign({ "Content-Type": "application/json" }, cors));
+      res.end(JSON.stringify({ ok: true, date: today, people: data.people }));
+      return;
+    }
+    if (req.method === "GET") {
+      const data = loadH();
+      res.writeHead(200, Object.assign({ "Content-Type": "application/json" }, cors));
+      res.end(JSON.stringify({ ok: true, date: today, people: data.people }));
+      return;
+    }
+    res.writeHead(405, cors);
+    res.end();
+    return;
+  }
   if (urlPath === "/naryad") {
     const NARYAD_FILE = path.join(ROOT, "naryad.json");
     const today = new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10);
