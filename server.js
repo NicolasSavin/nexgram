@@ -375,6 +375,67 @@ const server = http.createServer((req, res) => {
     }).catch((e) => sendJson(200, { ok: false, why: String(e && e.message || e), city: city }));
     return;
   }
+  if (urlPath === "/drivers") {
+    const FILE = path.join(ROOT, "drivers.json");
+    const SEED = [
+      { id: "d1", name: "Волков Руслан", car: "Газель", phone: "89821252465", role: "" },
+      { id: "d2", name: "Макурин Игорь", car: "Хавал", phone: "89048317892", role: "" },
+      { id: "d3", name: "Варламов Дмитрий", car: "МАН", phone: "89127533052", role: "" },
+      { id: "d4", name: "Пономарев Виктор", car: "Ситрак", phone: "89127652412", role: "" },
+      { id: "d5", name: "Яковлев Дмитрий (Митяй)", car: "КАМАЗ", phone: "89199194887", role: "" },
+      { id: "d6", name: "Дьяконов Никита", car: "Ситрак", phone: "89829971233", role: "" },
+      { id: "d7", name: "Коробейников Иван", car: "", phone: "89124621509", role: "секционщик" },
+      { id: "d8", name: "Королев Сергей (Катастрофа)", car: "Ситрак (не опасник)", phone: "89914563708", role: "" },
+      { id: "d9", name: "Косачев Сергей", car: "", phone: "89199107788", role: "секционщик" },
+      { id: "d10", name: "Лямин Иван", car: "", phone: "891276824014", role: "секционщик" }
+    ];
+    const loadD = () => {
+      try {
+        const d = JSON.parse(fs.readFileSync(FILE, "utf8"));
+        if (d && Array.isArray(d.people)) return d;
+      } catch (e) {}
+      const fresh = { people: SEED };
+      try { fs.writeFileSync(FILE, JSON.stringify(fresh)); } catch (e) {}
+      return fresh;
+    };
+    const saveD = (d) => { try { fs.writeFileSync(FILE, JSON.stringify(d)); } catch (e) {} };
+    const sendD = (d) => {
+      res.writeHead(200, Object.assign({ "Content-Type": "application/json" }, cors));
+      res.end(JSON.stringify(Object.assign({ ok: true }, d)));
+    };
+    if (req.method === "GET") { sendD(loadD()); return; }
+    if (req.method === "POST") {
+      let buf = "";
+      req.on("data", (c) => { buf += c; if (buf.length > 20000) req.destroy(); });
+      req.on("end", () => {
+        let body = {};
+        try { body = JSON.parse(buf || "{}"); } catch (e) {}
+        const data = loadD();
+        const clean = (p, id) => ({
+          id: id,
+          name: String(p.name || "").slice(0, 80),
+          car: String(p.car || "").slice(0, 80),
+          phone: String(p.phone || "").replace(/[^\d+]/g, "").slice(0, 16),
+          role: String(p.role || "").slice(0, 40)
+        });
+        if (body.action === "del") {
+          data.people = data.people.filter((p) => p.id !== String(body.id || ""));
+        } else if (body.action === "edit") {
+          data.people = data.people.map((p) => p.id === String(body.id || "") ? clean(body, p.id) : p);
+        } else {
+          const row = clean(body, Date.now().toString(36));
+          if (!row.name || !row.phone) { sendD(data); return; }
+          data.people.push(row);
+        }
+        saveD(data);
+        sendD(data);
+      });
+      return;
+    }
+    res.writeHead(405, cors);
+    res.end();
+    return;
+  }
   let file = urlPath === "/" ? "/index.html" : urlPath;
   file = path.normalize(file).replace(/^(\.\.[/\\])+/, "");
   if (file.endsWith("/")) file += "index.html";

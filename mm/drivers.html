@@ -47,23 +47,20 @@ input{width:100%;padding:12px 14px;border-radius:14px;border:1px solid rgba(255,
 <button class="btn" type="button" onclick="out()">Выйти</button>
 </div>
 <h1>Водители</h1>
-<p class="lead">Водители и секционщики. В чат охраны они не входят. Позвонить или написать SMS.</p>
+<p class="lead">Водители и секционщики. Список на сервере: поменяли здесь — у всех обновилось, новый APK не нужен.</p>
 <div id="list"></div>
+<div class="card">
+<b id="formTitle">Добавить</b>
+<input id="nm" placeholder="Имя">
+<input id="car" placeholder="Машина или «секционщик»">
+<input id="ph" placeholder="Телефон" inputmode="tel">
+<button class="btn" type="button" style="margin-top:12px" onclick="savePerson()">Сохранить</button>
+<p class="err" id="formErr"></p>
+</div>
 </div>
 <script>
-var KEY="mm_user";
-var PEOPLE=[
-  {name:"Волков Руслан", car:"Газель", phone:"89821252465"},
-  {name:"Макурин Игорь", car:"Хавал", phone:"89048317892"},
-  {name:"Варламов Дмитрий", car:"МАН", phone:"89127533052"},
-  {name:"Пономарев Виктор", car:"Ситрак", phone:"89127652412"},
-  {name:"Яковлев Дмитрий (Митяй)", car:"КАМАЗ", phone:"89199194887"},
-  {name:"Дьяконов Никита", car:"Ситрак", phone:"89829971233"},
-  {name:"Коробейников Иван", car:"", phone:"89124621509", role:"секционщик"},
-  {name:"Королев Сергей (Катастрофа)", car:"Ситрак (не опасник)", phone:"89914563708"},
-  {name:"Косачев Сергей", car:"", phone:"89199107788", role:"секционщик"},
-  {name:"Лямин Иван", car:"", phone:"891276824014", role:"секционщик"}
-];
+var KEY="mm_user", editId="";
+var BASES=["https://photography-word-essence-knowledge.trycloudflare.com","http://186.246.3.44",""];
 function norm(s){return String(s||"").trim().toLowerCase().replace(/ё/g,"е");}
 function user(){
   try{
@@ -89,20 +86,84 @@ function plus7(p){
   if(d.length===11 && d.charAt(0)==="7") return "+"+d;
   return d;
 }
-function draw(){
-  document.getElementById("list").innerHTML=PEOPLE.map(function(p){
+function api(opts){
+  var i=0;
+  function one(){
+    if(i>=BASES.length) return Promise.reject(new Error("drivers"));
+    var base=BASES[i++];
+    var ctrl=typeof AbortController!=="undefined"?new AbortController():null;
+    var t=ctrl?setTimeout(function(){ try{ctrl.abort();}catch(e){} }, 8000):null;
+    var o=Object.assign({cache:"no-store"}, opts||{});
+    if(ctrl) o.signal=ctrl.signal;
+    return fetch(base+"/drivers", o).then(function(r){
+      if(t) clearTimeout(t);
+      if(!r.ok) throw new Error("bad");
+      return r.json();
+    }).catch(function(){ if(t) clearTimeout(t); return one(); });
+  }
+  return one();
+}
+function draw(people){
+  document.getElementById("list").innerHTML=(people||[]).map(function(p){
     var tel=plus7(p.phone);
     var sub=p.car || p.role || "";
     return "<div class='card'><div class='who'>"+p.name+"</div>"
       +(sub?"<div class='sub'>"+sub+"</div>":"")
       +"<div class='phone'>"+p.phone+"</div>"
-      +"<div class='acts'><a href='tel:"+tel+"'>Позвонить</a><a href='sms:"+tel+"'>SMS</a></div></div>";
-  }).join("");
+      +"<div class='acts'><a href='tel:"+tel+"'>Позвонить</a><a href='sms:"+tel+"'>SMS</a>"
+      +"<button class='btn' type='button' onclick='editPerson("+JSON.stringify(p.id)+")'>Изменить</button>"
+      +"<button class='btn' type='button' onclick='delPerson("+JSON.stringify(p.id)+")'>Удалить</button></div></div>";
+  }).join("") || "<p class='lead'>Список пуст.</p>";
+  window._people=people||[];
+}
+async function load(){
+  try{
+    var j=await api();
+    draw(j.people||[]);
+  }catch(e){
+    document.getElementById("list").innerHTML="<p class='lead'>Нет связи со списком. Проверьте интернет и откройте страницу снова.</p>";
+  }
+}
+function editPerson(id){
+  var p=(window._people||[]).find(function(x){return x.id===id;});
+  if(!p) return;
+  editId=id;
+  document.getElementById("nm").value=p.name||"";
+  document.getElementById("car").value=p.car||p.role||"";
+  document.getElementById("ph").value=p.phone||"";
+  document.getElementById("formTitle").textContent="Изменить";
+}
+async function savePerson(){
+  var name=document.getElementById("nm").value.trim();
+  var car=document.getElementById("car").value.trim();
+  var phone=document.getElementById("ph").value.trim();
+  var err=document.getElementById("formErr");
+  if(!name||!phone){ err.textContent="Нужны имя и телефон."; return; }
+  var role=!car || /секцион/i.test(car) ? (car||"секционщик") : "";
+  var carName=/секцион/i.test(car) ? "" : car;
+  var body={action:editId?"edit":"add", id:editId, name:name, car:carName, phone:phone, role:role};
+  try{
+    var j=await api({method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    editId="";
+    document.getElementById("nm").value="";
+    document.getElementById("car").value="";
+    document.getElementById("ph").value="";
+    document.getElementById("formTitle").textContent="Добавить";
+    err.textContent="Сохранено. У остальных появится само.";
+    draw(j.people||[]);
+  }catch(e){ err.textContent="Не сохранилось."; }
+}
+async function delPerson(id){
+  if(!confirm("Удалить из списка?")) return;
+  try{
+    var j=await api({method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"del",id:id})});
+    draw(j.people||[]);
+  }catch(e){ alert("Не удалилось"); }
 }
 function show(){
   document.getElementById("gate").style.display="none";
   document.getElementById("app").style.display="block";
-  draw();
+  load();
 }
 if(user()) show();
 </script>

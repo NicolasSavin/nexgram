@@ -9,7 +9,7 @@
     hotels: { url: SITE + "hotels.html?v=4", name: "Гостиницы", color: "#d4b483", initials: "ГС" },
     where: { url: SITE + "where.html", name: "Кто где", color: "#faa774", initials: "КГ" },
     naryad: { url: "mm/naryad.html?v=5", name: "Наряд", color: "#a695e7", initials: "НР" },
-    drivers: { url: SITE + "drivers.html", name: "Водители", color: "#e7c56a", initials: "ВД" },
+    drivers: { url: SITE + "drivers.html?v=2", name: "Водители", color: "#e7c56a", initials: "ВД" },
     helper: { url: SITE + "chat.html", name: "Помощник смены", color: "#7bc862", initials: "ИИ" }
   };
 
