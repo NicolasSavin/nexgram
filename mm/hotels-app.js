@@ -76,21 +76,28 @@ fillCities(); draw();
 function rub(n){return Number(n||0).toLocaleString("ru-RU")+" ₽";}
 function openHotel(i){
 var h=hotels()[i]; if(!h) return;
-document.getElementById("hn").textContent=h.n;
-document.getElementById("hc").textContent="Город: "+cityOf(h);
-document.getElementById("ha").textContent="Адрес: "+(h.a||"не указан");
-document.getElementById("ht").innerHTML=h.t?("Телефон: <a href='tel:"+h.t+"' style='color:#f3e0b8'>"+h.t+"</a>"):"Телефон: уточнить";
-document.getElementById("hrep").textContent=rub(h.p);
-document.getElementById("hstay").textContent=rub(h.s||h.p);
-document.getElementById("hp").src=h.img||PHOTOS[0];
+function put(id, text, html){
+  var el=document.getElementById(id); if(!el) return;
+  if(html) el.innerHTML=text; else el.textContent=text;
+}
+put("hn", h.n);
+put("hc", "Город: "+cityOf(h));
+put("ha", "Адрес: "+(h.a||"не указан"));
+put("ht", h.t?("Телефон: <a href='tel:"+h.t+"' style='color:#f3e0b8'>"+h.t+"</a>"):"Телефон: уточнить", true);
+put("hrep", rub(h.p));
+put("hstay", rub(h.s||h.p));
+var hp=document.getElementById("hp"); if(hp) hp.src=h.img||PHOTOS[0];
 var eo=document.getElementById("editOpen");
 var adm=user()&&user().admin;
-eo.style.display=adm?"inline-block":"none";
-eo.onclick=function(){ document.getElementById("m").classList.remove("show"); editHotel(i); };
+if(eo){
+  eo.style.display=adm?"inline-block":"none";
+  eo.onclick=function(){ document.getElementById("m").classList.remove("show"); editHotel(i); };
+}
 hereHotel=h;
-document.getElementById("hereIn").textContent="Кто здесь: загрузка…";
+put("hereIn", "Кто здесь: загрузка…");
 window._openedAt=Date.now();
-document.getElementById("m").classList.add("show");
+var modal=document.getElementById("m");
+if(modal) modal.classList.add("show");
 fillHereIn(h);
 loadWeather(cityOf(h));
 }
