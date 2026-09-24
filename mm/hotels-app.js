@@ -89,6 +89,7 @@ eo.style.display=adm?"inline-block":"none";
 eo.onclick=function(){ document.getElementById("m").classList.remove("show"); editHotel(i); };
 hereHotel=h;
 document.getElementById("hereIn").textContent="Кто здесь: загрузка…";
+window._openedAt=Date.now();
 document.getElementById("m").classList.add("show");
 fillHereIn(h);
 loadWeather(cityOf(h));
@@ -124,9 +125,16 @@ rows.forEach(function(h,i){
 var c=cityOf(h);
 if(city && c!==city) return;
 if(q && norm(h.n+" "+(h.a||"")+" "+c).indexOf(q)<0) return;
-html+="<tr><td><button class='name' type='button' onclick='openHotel("+i+")'>"+h.n+"</button></td><td>"+c+"</td><td>"+(h.a||"—")+"</td><td class='price'>"+Number(h.p||0).toLocaleString("ru-RU")+"</td><td>"+(adm?"<button class='btn' type='button' onclick='editHotel("+i+")'>Изменить</button>":"")+"</td></tr>";
+html+="<tr><td><button class='name' type='button' data-i='"+i+"'>"+h.n+"</button></td><td>"+c+"</td><td>"+(h.a||"—")+"</td><td class='price'>"+Number(h.p||0).toLocaleString("ru-RU")+"</td><td>"+(adm?"<button class='btn' type='button' onclick='editHotel("+i+")'>Изменить</button>":"")+"</td></tr>";
 });
 document.getElementById("tb").innerHTML=html||"<tr><td colspan='5'>Нет совпадений</td></tr>";
+[].forEach.call(document.querySelectorAll("#tb .name"), function(btn){
+  var open=function(ev){
+    if(ev){ ev.preventDefault(); ev.stopPropagation(); }
+    openHotel(+btn.getAttribute("data-i"));
+  };
+  btn.addEventListener("click", open);
+});
 }
 
 var WX_CACHE={};
