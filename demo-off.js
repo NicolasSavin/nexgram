@@ -67,8 +67,8 @@
       if (location.hostname && location.hostname !== "appassets.androidplatform.net") {
         relays.push(location.protocol + "//" + location.host);
       }
-      relays.push("https://karavanmessage.ru");
       relays.push("http://186.246.3.44");
+      relays.push("https://karavanmessage.ru");
       if (window.NEXGRAM_RELAY) relays.push(window.NEXGRAM_RELAY.replace(/\/$/, ""));
       var lastErr = null;
       for (var i = 0; i < relays.length; i++) {
@@ -85,7 +85,8 @@
       if (typeof ensureLiveChat === "function") {
         var c = ensureLiveChat();
         var m2 = String((lastErr && lastErr.message) || lastErr || "");
-        c.status = m2.indexOf("парол") >= 0 ? "другой пароль комнаты" : "нет сети";
+        c.status = m2.indexOf("парол") >= 0 ? "другой пароль комнаты" : "сеть не пускает на сервер";
+        if (typeof els !== "undefined" && els.convStatus) els.convStatus.textContent = c.status;
         if (typeof renderList === "function") renderList();
       }
       if (lastErr) throw lastErr;
