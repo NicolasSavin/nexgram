@@ -318,7 +318,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun injectRelay() {
-        val js = "window.NEXGRAM_RELAY = ${org.json.JSONObject.quote("http://186.246.3.44")};"
+        val ver = try {
+            packageManager.getPackageInfo(packageName, 0).versionName ?: ""
+        } catch (_: Exception) { "" }
+        val js = "window.NEXGRAM_RELAY = ${org.json.JSONObject.quote("http://186.246.3.44")};" +
+            "var __v=document.querySelector('.drawer-phone'); if(__v) __v.textContent=" + org.json.JSONObject.quote("версия $ver") + ";"
         web.evaluateJavascript(js, null)
     }
 

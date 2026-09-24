@@ -20,7 +20,7 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <a id="getapk" href="/Radar-1.0.7.apk">Скачать Радар 1.0.7 для Android</a>
+  <a id="getapk" href="/Radar-1.0.9.apk">Скачать Радар 1.0.9 для Android</a>
   <div id="boot"><h1>Радар</h1><p>загрузка…</p></div>
   <div class="app" id="app">
     <aside class="sidebar" id="sidebar">
@@ -71,7 +71,7 @@
   </div>
   <div class="drawer-backdrop hidden" id="drawerBackdrop"></div>
   <nav class="drawer hidden" id="drawer">
-    <div class="drawer-profile"><div class="avatar lg" style="background:#6b8afd">R</div><div><div class="drawer-name">Радар</div><div class="drawer-phone">версия 1.0.1</div></div></div>
+    <div class="drawer-profile"><div class="avatar lg" style="background:#6b8afd">R</div><div><div class="drawer-name">Радар</div><div class="drawer-phone">версия 1.0.10</div></div></div>
     <button class="drawer-item" data-action="routes">Маршруты</button>
     <button class="drawer-item" data-action="rights">Права доступа</button>
     <button class="drawer-item" data-action="guest">Гражданский чат</button>
@@ -128,6 +128,12 @@
   <script src="ptt.js?v=5"></script>
   <script src="media.js"></script>
   <script src="staff-desk.js?v=7"></script>
+  <script>
+  fetch("/version.json",{cache:"no-store"}).then(function(r){return r.json()}).then(function(j){
+    var el=document.querySelector(".drawer-phone");
+    if(el && j.versionName) el.textContent="версия "+j.versionName;
+  }).catch(function(){});
+  </script>
   <script src="access.js"></script>
   <script src="live-ui.js"></script>
   <script>
