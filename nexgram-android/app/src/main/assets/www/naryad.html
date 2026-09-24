@@ -30,11 +30,10 @@ select{width:100%;box-sizing:border-box;padding:10px 12px;border-radius:10px;bor
   <input id="since" type="date">
   <input id="until" type="date">
 </div>
-<label>Как едем</label>
-<select id="mode">
-  <option value="rail">Железная дорога</option>
-  <option value="bus">Автобус</option>
-</select>
+<label>Вагонов, ж/д</label>
+<input id="wagons" type="number" min="0" value="0">
+<label>Автомобилей, а/м</label>
+<input id="cars" type="number" min="0" value="0">
 <label>Откуда</label><input id="fr">
 <label>Куда</label><input id="to">
 <label>Груз</label><input id="cg">
@@ -71,12 +70,12 @@ function draw(j){
   document.getElementById("when").textContent = "Сегодня " + (j.date||"");
   var n = j.naryad || {};
   var empty = !n.from && !n.to && !n.cargo;
-  var how = n.mode === "bus" ? "Автобус" : (n.mode === "rail" ? "Железная дорога" : "—");
   var span = (n.since || n.until) ? ((n.since||"—") + " — " + (n.until||"—")) : "—";
   document.getElementById("view").innerHTML = empty
     ? "<p class='lead'>Наряд ещё не поставлен.</p>"
     : "<div class='kv'><b>Срок</b> "+esc(span)+"</div>"
-     +"<div class='kv'><b>Как едем</b> "+esc(how)+"</div>"
+     +"<div class='kv'><b>Вагоны</b> "+esc(n.wagons||0)+"</div>"
+     +"<div class='kv'><b>А/м</b> "+esc(n.cars||0)+"</div>"
      +"<div class='kv'><b>Маршрут</b> "+esc(n.from)+" → "+esc(n.to)+"</div>"
      +"<div class='kv'><b>Груз</b> "+esc(n.cargo||"—")+"</div>"
      +"<div class='kv'><b>Старший</b> "+esc(n.senior||"—")+"</div>"
@@ -88,7 +87,8 @@ function draw(j){
   if (!empty) {
     if (n.since) document.getElementById("since").value = n.since;
     if (n.until) document.getElementById("until").value = n.until;
-    if (n.mode) document.getElementById("mode").value = n.mode;
+    document.getElementById("wagons").value = n.wagons || 0;
+    document.getElementById("cars").value = n.cars || 0;
     document.getElementById("fr").value = n.from||"";
     document.getElementById("to").value = n.to||"";
     document.getElementById("cg").value = n.cargo||"";
@@ -115,7 +115,8 @@ document.getElementById("saveN").onclick = function(){
   var body = {
     since: document.getElementById("since").value,
     until: document.getElementById("until").value,
-    mode: document.getElementById("mode").value,
+    wagons: document.getElementById("wagons").value,
+    cars: document.getElementById("cars").value,
     from: document.getElementById("fr").value.trim(),
     to: document.getElementById("to").value.trim(),
     cargo: document.getElementById("cg").value.trim(),

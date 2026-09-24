@@ -242,7 +242,8 @@ const server = http.createServer((req, res) => {
           data.naryad = {
             since: dayOk(body.since) ? body.since : today,
             until: dayOk(body.until) ? body.until : (dayOk(body.since) ? body.since : today),
-            mode: body.mode === "bus" ? "bus" : "rail",
+            wagons: Math.max(0, Math.min(999, parseInt(body.wagons, 10) || 0)),
+            cars: Math.max(0, Math.min(999, parseInt(body.cars, 10) || 0)),
             from: String(body.from || "").slice(0, 80),
             to: String(body.to || "").slice(0, 80),
             cargo: String(body.cargo || "").slice(0, 120),
