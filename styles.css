@@ -242,6 +242,7 @@ body {
 
 .messages {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 16px 12% 12px;
   display: flex;
@@ -503,13 +504,26 @@ body {
   background: radial-gradient(circle at 30% 30%, #ffd54f, #f9a825 60%, #ef6c00);
 }
 .ptt-preview {
-  width: min(72vw, 280px);
-  max-height: 180px;
+  width: min(92vw, 420px);
+  height: 240px;
   border-radius: 12px;
   background: #000;
   object-fit: cover;
 }
-.ptt-preview.hidden { display: none; }
+#pttPreview:not(.hidden), #pttRemote:not(.hidden) {
+  display: block !important;
+  position: fixed;
+  z-index: 40;
+  left: 10px;
+  right: 10px;
+  width: auto;
+  height: 240px;
+  max-height: none;
+}
+#pttPreview:not(.hidden) { bottom: 176px; }
+#pttRemote:not(.hidden) { bottom: 424px; }
+#pttPreview.front { transform: scaleX(-1); }
+.ptt-preview.hidden { display: none !important; }
 .ptt-btn .ptt-label { font-size: 11px; font-weight: 700; letter-spacing: .08em; }
 .ptt-btn:active, .ptt-btn.hot {
   transform: scale(1.04);

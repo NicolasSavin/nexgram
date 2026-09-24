@@ -70,12 +70,21 @@ const PTT = {
     this.sticky = !!sticky;
     this.localChunks = [];
     const btn = document.getElementById(this.video ? "pttVidBtn" : "pttBtn");
-    const cons = this.video
-      ? { audio: { echoCancellation: true, noiseSuppression: true }, video: { facingMode: this.facing, width: { max: 480 }, height: { max: 360 }, frameRate: { max: 12 } } }
-      : { audio: { echoCancellation: true, noiseSuppression: true } };
-    try {
-      this.stream = await navigator.mediaDevices.getUserMedia(cons);
-    } catch {
+    const tries = this.video
+      ? [
+          { audio: true, video: { facingMode: this.facing, width: { ideal: 640 }, height: { ideal: 480 } } },
+          { audio: true, video: { facingMode: this.facing } },
+          { audio: true, video: true }
+        ]
+      : [{ audio: true }];
+    this.stream = null;
+    for (let i = 0; i < tries.length; i++) {
+      try {
+        this.stream = await navigator.mediaDevices.getUserMedia(tries[i]);
+        break;
+      } catch (e) {}
+    }
+    if (!this.stream) {
       this.status(this.video ? "Нет доступа к камере" : "Нет доступа к микрофону", "live");
       return;
     }
@@ -83,8 +92,13 @@ const PTT = {
       const prev = this.preview();
       if (prev) {
         prev.srcObject = this.stream;
+        prev.muted = true;
+        prev.playsInline = true;
+        prev.classList.toggle("front", this.facing === "user");
         this.show(prev, true);
-        prev.play().catch(function () {});
+        const kick = function () { prev.play().catch(function () {}); };
+        kick();
+        setTimeout(kick, 300);
       }
     }
     const types = this.video
@@ -175,12 +189,17 @@ const PTT = {
     const prev = this.preview();
     try {
       const next = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true },
-        video: { facingMode: this.facing, width: { max: 480 }, height: { max: 360 }, frameRate: { max: 12 } }
+        audio: true,
+        video: { facingMode: this.facing }
       });
       if (this.stream) this.stream.getTracks().forEach((t) => t.stop());
       this.stream = next;
-      if (prev) { prev.srcObject = next; prev.play().catch(function () {}); }
+      if (prev) {
+        prev.srcObject = next;
+        prev.muted = true;
+        prev.classList.toggle("front", this.facing === "user");
+        prev.play().catch(function () {});
+      }
       if (this.rec && this.rec.state !== "inactive") {
         try { this.rec.stop(); } catch (e) {}
       }
