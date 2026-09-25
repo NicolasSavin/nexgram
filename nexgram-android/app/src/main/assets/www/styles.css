@@ -258,6 +258,13 @@ body {
 .walls{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 10px}
 .walls button{width:34px;height:34px;border-radius:50%;border:2px solid transparent;padding:0;cursor:pointer}
 .walls button.on{border-color:#fff}
+.gate-card .walls button {
+  width: 34px;
+  height: 34px;
+  margin-top: 0;
+  padding: 0;
+  border-radius: 50%;
+}
 .walls [data-wall="night"]{background:#0e1621}
 .walls [data-wall="sea"]{background:linear-gradient(180deg,#1a6f8a,#0c3b4a)}
 .walls [data-wall="forest"]{background:linear-gradient(180deg,#2f8a52,#143222)}
@@ -570,11 +577,13 @@ body {
   background: rgba(8, 14, 20, .82);
   z-index: 40;
   display: grid;
-  place-items: center;
-  padding: 20px;
+  place-items: start center;
+  overflow-y: auto;
+  padding: 16px 16px 28px;
 }
 .gate-card {
   width: min(420px, 100%);
+  margin: 12px auto;
   background: var(--sidebar);
   border-radius: 16px;
   padding: 22px 22px 18px;

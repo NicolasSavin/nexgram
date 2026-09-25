@@ -76,6 +76,16 @@
       b.classList.add("on");
     });
   }
+  var card = document.querySelector("#gate .gate-card");
+  if (card) {
+    card.addEventListener("keydown", function (e) {
+      if (e.key !== "Enter") return;
+      if (!guest()) return;
+      e.preventDefault();
+      var joinBtn = document.getElementById("gateJoin");
+      if (joinBtn) joinBtn.click();
+    });
+  }
   var join = document.getElementById("gateJoin");
   if (join) {
     join.addEventListener("click", function () {
@@ -126,7 +136,7 @@
           '<button type="button" data-wall="forest"></button><button type="button" data-wall="sand"></button>' +
           '<button type="button" data-wall="dusk"></button><button type="button" data-wall="paper"></button></div>' +
           '<label>Приветствие</label><input id="lookHi" maxlength="200" placeholder="Что увидят при входе">' +
-          '<button type="button" id="lookSave">Сохранить</button><button type="button" class="ghost" id="lookClose">Закрыть</button></div>';
+          '<button type="button" id="lookSave">Готово</button><button type="button" class="ghost" id="lookClose">Закрыть</button></div>';
         document.body.appendChild(panel);
         panel.querySelector("#lookWalls").addEventListener("click", function (e) {
           var t = e.target.closest("[data-wall]");
@@ -135,6 +145,9 @@
           t.classList.add("on");
         });
         panel.querySelector("#lookClose").onclick = function () { panel.classList.add("hidden"); };
+        panel.querySelector("#lookHi").addEventListener("keydown", function (e) {
+          if (e.key === "Enter") { e.preventDefault(); panel.querySelector("#lookSave").click(); }
+        });
         panel.querySelector("#lookSave").onclick = function () {
           var on = panel.querySelector("#lookWalls .on");
           var wall = on ? on.getAttribute("data-wall") : "night";

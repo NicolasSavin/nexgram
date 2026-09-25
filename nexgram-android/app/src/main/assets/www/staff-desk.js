@@ -134,7 +134,7 @@
       if (passLab) passLab.textContent = "Пароль комнаты (свой, не с сайта)";
       var roomLab = room && room.previousElementSibling;
       if (roomLab) roomLab.textContent = "Код комнаты";
-      if (join) join.textContent = "Войти";
+      if (join) join.textContent = "Готово";
       staffOk = false;
     }
   }
