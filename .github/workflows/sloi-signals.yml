@@ -1,0 +1,21 @@
+name: sloi-signals
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: fetch
+        run: curl -fsSL --retry 3 -o signals/sloi.txt https://sloi-kohl.vercel.app/api/signals.txt
+      - name: commit
+        run: |
+          git config user.name radar
+          git config user.email radar@users.noreply.github.com
+          git add signals/sloi.txt
+          git diff --cached --quiet || git commit -m "signals"
+          git push
