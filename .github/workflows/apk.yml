@@ -5,18 +5,24 @@ on:
     paths:
       - "nexgram-android/**"
       - ".github/workflows/apk.yml"
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
+
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.9"
+
       - name: Install Android SDK
         run: |
           mkdir -p "$HOME/android-sdk/cmdline-tools"
@@ -25,15 +31,25 @@ jobs:
           mv "$HOME/android-sdk/cmdline-tools/cmdline-tools" "$HOME/android-sdk/cmdline-tools/latest"
           echo "ANDROID_HOME=$HOME/android-sdk" >> "$GITHUB_ENV"
           echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> "$GITHUB_ENV"
-          yes | "$HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$HOME/android-sdk" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
-      - name: Wrapper and build
+          yes | "$HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$HOME/android-sdk" \
+            "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Build signed release APK
         working-directory: nexgram-android
         run: |
           gradle wrapper --gradle-version 8.9
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
-          cp app/build/outputs/apk/debug/app-debug.apk radar.apk
-      - uses: actions/upload-artifact@v4
+          ./gradlew assembleRelease --no-daemon --stacktrace
+          ls -la app/build/outputs/apk/release/
+          cp app/build/outputs/apk/release/app-release.apk Radar-1.7.1-native.apk
+          # also keep generic name
+          cp app/build/outputs/apk/release/app-release.apk radar-release.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
         with:
-          name: radar-apk
-          path: nexgram-android/radar.apk
+          name: Radar-1.7.1-native
+          path: |
+            nexgram-android/Radar-1.7.1-native.apk
+            nexgram-android/radar-release.apk
+          retention-days: 30
