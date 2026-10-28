@@ -82,14 +82,11 @@ class RadarService : Service(), LocationListener {
     private fun startAsForeground() {
         val n = buildNotification("Гео и SMS в фоне")
         if (Build.VERSION.SDK_INT >= 34) {
-            val types = ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION or
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            val types = ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION or ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
             startForeground(NOTIF_ID, n, types)
         } else if (Build.VERSION.SDK_INT >= 29) {
             startForeground(NOTIF_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION)
-        } else {
-            startForeground(NOTIF_ID, n)
-        }
+        } else startForeground(NOTIF_ID, n)
     }
 
     private fun ensureChannel() {
@@ -106,18 +103,10 @@ class RadarService : Service(), LocationListener {
             this, 0, Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val b = if (Build.VERSION.SDK_INT >= 26) {
-            Notification.Builder(this, CH_ID)
-        } else {
-            @Suppress("DEPRECATION")
-            Notification.Builder(this)
-        }
-        return b.setContentTitle("Радар")
-            .setContentText(text)
-            .setSmallIcon(R.drawable.ic_radar)
-            .setContentIntent(open)
-            .setOngoing(true)
-            .build()
+        val b = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(this, CH_ID)
+        else @Suppress("DEPRECATION") Notification.Builder(this)
+        return b.setContentTitle("Радар").setContentText(text).setSmallIcon(R.drawable.ic_radar)
+            .setContentIntent(open).setOngoing(true).build()
     }
 
     private fun updateNotification() {
@@ -136,10 +125,8 @@ class RadarService : Service(), LocationListener {
     }
 
     private fun hasLocationPermission(): Boolean {
-        val fine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) ==
-            PackageManager.PERMISSION_GRANTED
-        val coarse = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) ==
-            PackageManager.PERMISSION_GRANTED
+        val fine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        val coarse = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
         return fine || coarse
     }
 
@@ -160,6 +147,34 @@ class RadarService : Service(), LocationListener {
         lastLon = location.longitude
         lastFixAt = System.currentTimeMillis()
         updateNotification()
+        try { processWatches(lastLat, lastLon) } catch (_: Exception) {}
+    }
+
+    private fun processWatches(lat: Double, lon: Double) {
+        val watches = StationWatchStore.loadList(this)
+        if (watches.isEmpty()) return
+        val state = StationWatchStore.getState(this)
+        var changed = false
+        for (w in watches) {
+            val d = StationWatchStore.distanceM(lat, lon, w.lat, w.lon)
+            val prev = state[w.id] ?: "out"
+            if (prev != "in" && d <= w.nearM) {
+                state[w.id] = "in"; changed = true; onStationEvent(w, "прибыли", d)
+            } else if (prev == "in" && d >= w.farM) {
+                state[w.id] = "out"; changed = true; onStationEvent(w, "убыли", d)
+            }
+        }
+        if (changed) StationWatchStore.setState(this, state)
+    }
+
+    private fun onStationEvent(w: StationWatch, kind: String, distM: Double) {
+        val text = if (kind == "прибыли") "Прибыли на станцию ${w.name}." else "Убыли со станции ${w.name}."
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+            .putString("last_station_event", "$kind|${w.name}|${System.currentTimeMillis()}").apply()
+        if (w.notifyEscort && w.escortPhone.isNotBlank()) SmsHelper.send(this, w.escortPhone, text, -1)
+        try {
+            getSystemService(NotificationManager::class.java).notify(NOTIF_ID + 1, buildNotification("$kind: ${w.name}"))
+        } catch (_: Exception) {}
     }
 
     @Deprecated("Deprecated in Java")
@@ -178,14 +193,12 @@ class RadarService : Service(), LocationListener {
         const val EXTRA_TEXT = "text"
         const val EXTRA_SIM = "sim"
 
-        @Volatile
-        var instance: RadarService? = null
+        @Volatile var instance: RadarService? = null
 
         fun ensureRunning(ctx: android.content.Context) {
             val i = Intent(ctx, RadarService::class.java)
             try {
-                if (Build.VERSION.SDK_INT >= 26) ctx.startForegroundService(i)
-                else ctx.startService(i)
+                if (Build.VERSION.SDK_INT >= 26) ctx.startForegroundService(i) else ctx.startService(i)
             } catch (_: Exception) {}
         }
 
@@ -198,11 +211,8 @@ class RadarService : Service(), LocationListener {
                 putExtra(EXTRA_SIM, simSlot)
             }
             try {
-                if (Build.VERSION.SDK_INT >= 26) ctx.startForegroundService(i)
-                else ctx.startService(i)
-            } catch (_: Exception) {
-                SmsHelper.send(ctx, phone, text, simSlot)
-            }
+                if (Build.VERSION.SDK_INT >= 26) ctx.startForegroundService(i) else ctx.startService(i)
+            } catch (_: Exception) { SmsHelper.send(ctx, phone, text, simSlot) }
         }
 
         fun lastLocation(ctx: android.content.Context): Pair<Double, Double>? {
