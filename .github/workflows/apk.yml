@@ -41,14 +41,14 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon --stacktrace
           ls -la app/build/outputs/apk/release/
-          cp app/build/outputs/apk/release/app-release.apk Radar-1.7.3-native.apk
+          cp app/build/outputs/apk/release/app-release.apk Radar-1.7.4-native.apk
           cp app/build/outputs/apk/release/app-release.apk radar-release.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Radar-1.7.3-native
+          name: Radar-1.7.4-native
           path: |
-            nexgram-android/Radar-1.7.3-native.apk
+            nexgram-android/Radar-1.7.4-native.apk
             nexgram-android/radar-release.apk
           retention-days: 30
