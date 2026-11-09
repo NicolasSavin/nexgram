@@ -9,8 +9,8 @@ android {
         applicationId = "ru.nexgram.app.native"
         minSdk = 24
         targetSdk = 35
-        versionCode = 354
-        versionName = "1.7.4-native"
+        versionCode = 355
+        versionName = "1.7.5-native"
     }
     signingConfigs {
         create("radar") {

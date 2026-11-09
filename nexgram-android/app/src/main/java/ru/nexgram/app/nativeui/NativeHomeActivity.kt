@@ -8,11 +8,11 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import ru.nexgram.app.MainActivity
 
-/** Нативный домашний экран — без WebView. */
+/** Нативный дом: полный Радар + стабильные экраны. */
 class NativeHomeActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        title = "Радар · натив"
+        title = "Радар"
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(28, 36, 28, 28)
@@ -25,7 +25,7 @@ class NativeHomeActivity : AppCompatActivity() {
             setPadding(0, 0, 0, 8)
         })
         root.addView(TextView(this).apply {
-            text = "Нативные экраны · авто: " +
+            text = "Полный интерфейс и нативные инструменты\nАвто: " +
                 if (MasterAuto.isOn(this@NativeHomeActivity)) "ВКЛ" else "ВЫКЛ"
             setTextColor(0xFF9AA8BC.toInt())
             setPadding(0, 0, 0, 24)
@@ -47,6 +47,9 @@ class NativeHomeActivity : AppCompatActivity() {
             }
         }
 
+        btn("Полный Радар (весь функционал)") {
+            startActivity(Intent(this, MainActivity::class.java))
+        }
         btn("Журнал звонков и SMS") {
             startActivity(Intent(this, JournalActivity::class.java))
         }
@@ -62,9 +65,6 @@ class NativeHomeActivity : AppCompatActivity() {
         btn(if (MasterAuto.isOn(this)) "Авто: ВЫКЛЮЧИТЬ" else "Авто: включить") {
             MasterAuto.set(this, !MasterAuto.isOn(this))
             recreate()
-        }
-        btn("Старый интерфейс (WebView)") {
-            startActivity(Intent(this, MainActivity::class.java))
         }
         setContentView(root)
     }
