@@ -31,17 +31,13 @@
             <action android:name="android.intent.action.SENDTO" />
             <data android:scheme="sms" />
         </intent>
-        <intent>
-            <action android:name="android.intent.action.SENDTO" />
-            <data android:scheme="smsto" />
-        </intent>
     </queries>
 
     <application
         android:allowBackup="true"
         android:icon="@drawable/ic_radar"
         android:roundIcon="@drawable/ic_radar"
-        android:label="@string/app_name"
+        android:label="Радар Натив"
         android:supportsRtl="true"
         android:usesCleartextTraffic="true"
         android:theme="@style/Theme.NexGram"
@@ -67,7 +63,7 @@
         </receiver>
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="ru.nexgram.app.fileprovider"
+            android:authorities="${applicationId}.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data
@@ -75,18 +71,24 @@
                 android:resource="@xml/file_paths" />
         </provider>
         <activity
-            android:name=".MainActivity"
+            android:name=".nativeui.NativeHomeActivity"
             android:exported="true"
-            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout"
-            android:windowSoftInputMode="adjustResize"
+            android:label="Радар Натив"
             android:theme="@style/Theme.NexGram">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.NexGram" />
         <activity android:name=".nativeui.JournalActivity" android:exported="false" android:label="Журнал" />
         <activity android:name=".nativeui.RaportActivity" android:exported="false" android:label="Рапорт" />
         <activity android:name=".nativeui.NaryadActivity" android:exported="false" android:label="Наряд" />
+        <activity android:name=".nativeui.ComposeSmsActivity" android:exported="false" android:label="SMS" />
     </application>
 </manifest>
