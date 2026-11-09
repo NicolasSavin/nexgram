@@ -1,31 +1,26 @@
-# Radar native rewrite (продолжение в любой ветке)
+# Radar native rewrite — complete handoff
 
-Пакет: `ru.nexgram.app.nativeui`
+Branch: `native-rewrite`  
+https://github.com/NicolasSavin/nexgram/tree/native-rewrite
 
-## Этапы
+## On branch
+- nativeui/BlacklistStore, SmsConfirm, MasterAuto
+- nativeui/JournalActivity (звонки + SMS + ЧС + авто-рубильник)
+- nativeui/RaportStore, RaportActivity (локальный рапорт)
+- nativeui/NaryadActivity, PttNative (stubs)
+- AndroidManifest: activities + READ_CALL_LOG + READ_SMS
+- BridgeHooks.kt (описание правок MainActivity)
 
-| Этап | Статус | Файлы |
-|------|--------|--------|
-| 1 | done | BlacklistStore, SmsConfirm, JournalActivity (звонки) |
-| 1б | done | JournalActivity + SMS + MasterAuto toggle |
-| 2 | done skeleton | RaportStore, RaportActivity (локально add/edit/delete) |
-| 3 | stub | NaryadActivity |
-| 4 | stub | PttNative |
-| 5 | todo | автодоклады только через MasterAuto |
+## MainActivity.kt
+Полный файл с openNative* и превью SMS — в **radar-native-handoff.zip**  
+(скачать и положить в `nexgram-android/app/src/main/java/ru/nexgram/app/MainActivity.kt` перед сборкой).
 
-## Bridge из WebView
-- `ShieldPhone.openNativeJournal()`
-- `ShieldPhone.openNativeRaport(naryadId)`
-- `ShieldPhone.openNativeNaryad(naryadId)`
-- `ShieldPhone.masterAuto('0'|'1')` / `masterAutoOn()`
-- `sendSms` — ручные с превью; auto* только если MasterAuto вкл
-
-## Сборка
+## Build
 ```bash
-cd nexgram-android && ./gradlew :app:assembleRelease
+cd nexgram-android
+# скопировать MainActivity из handoff zip если нужно
+./gradlew :app:assembleRelease
 ```
 
-## Ветка
-`native-rewrite` — все эти файлы.
-
-Гибрид 1.8.40 на телефоне пока рабочий с авто=выкл.
+## Hybrid phone
+1.8.40, авто Выкл — пока основной рабочий APK.
